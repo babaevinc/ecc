@@ -1,0 +1,20 @@
+{
+  "name": "moy-sklad-agent-team",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-agent development, testing and security-audit team for the «Мой склад» warehouse app",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"tests/unit/*.test.js\"",
+    "test:e2e": "playwright test",
+    "api": "node backend/test-api/server.js",
+    "guard": "node orchestrator/guard.js --env",
+    "orchestrate": "node orchestrator/run.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
