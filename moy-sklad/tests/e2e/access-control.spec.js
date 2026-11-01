@@ -1,25 +1,25 @@
 // @ts-check
-// Role × action matrix. Source of truth: docs/architecture/roles.md (keep both in sync).
+// Role × action matrix. Source of truth: docs/architecture/roles.md (tests/unit/roles-doc.test.js keeps them in sync).
 const { test, expect } = require('@playwright/test');
 const { login, createRequest } = require('./helpers');
+const { ROLES, MATRIX } = require('./role-matrix');
 
-const ROLES = ['test-superadmin', 'test-owner', 'test-staff', 'test-manager', 'test-viewer'];
-
-/** expected status per role, in ROLES order */
-const MATRIX = [
-  { action: 'list batches', expect: [200, 200, 200, 200, 200], run: (r, h) => r.get('/api/batches', { headers: h }) },
-  { action: 'receive stock', expect: [403, 201, 201, 403, 403], run: (r, h) => r.post('/api/batches', { headers: h, data: { prod: 'Щавель', wh: 'w1', qty: 1 } }) },
-  { action: 'create request', expect: [403, 201, 201, 201, 403], run: (r, h) => r.post('/api/requests', { headers: h, data: { lines: [{ prod: 'Укроп', qty: 1 }] } }) },
-  { action: 'write off spoilage', expect: [403, 201, 201, 403, 403], run: (r, h) => r.post('/api/waste', { headers: h, data: { batch: 'b1', qty: 1, reason: 'spoiled' } }) },
-  { action: 'view finance', expect: [200, 200, 403, 403, 403], run: (r, h) => r.get('/api/finance', { headers: h }) },
-  { action: 'list all companies', expect: [200, 403, 403, 403, 403], run: (r, h) => r.get('/api/admin/companies', { headers: h }) },
-];
+/** how each action in the matrix is performed against the test API */
+const RUN = {
+  'list batches': (r, h) => r.get('/api/batches', { headers: h }),
+  'receive stock': (r, h) => r.post('/api/batches', { headers: h, data: { prod: 'Щавель', wh: 'w1', qty: 1 } }),
+  'create request': (r, h) => r.post('/api/requests', { headers: h, data: { lines: [{ prod: 'Укроп', qty: 1 }] } }),
+  'write off spoilage': (r, h) => r.post('/api/waste', { headers: h, data: { batch: 'b1', qty: 1, reason: 'spoiled' } }),
+  'view finance': (r, h) => r.get('/api/finance', { headers: h }),
+  'list all companies': (r, h) => r.get('/api/admin/companies', { headers: h }),
+};
 
 for (const row of MATRIX) {
   ROLES.forEach((role, i) => {
     test(`${role} → ${row.action} = ${row.expect[i]}`, async ({ request }) => {
-      const headers = await login(request, role);
-      const res = await row.run(request, headers);
+      const run = RUN[row.action];
+      expect(run, `no request defined for "${row.action}"`).toBeTruthy();
+      const res = await run(request, await login(request, `test-${role}`));
       expect(res.status()).toBe(row.expect[i]);
     });
   });
