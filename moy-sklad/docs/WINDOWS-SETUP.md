@@ -59,6 +59,22 @@ py -m pip install locust==2.32.4
 locust --version
 ```
 
+**PostgreSQL** нужен для стадии `db` (схема базы, права доступа, функции остатков):
+
+```powershell
+winget install --id PostgreSQL.PostgreSQL.16 -e
+```
+
+При установке задайте пароль пользователя `postgres` только для своей локальной базы. В окне PowerShell,
+где запускаете проверки:
+
+```powershell
+$env:MS_DB_URL = "postgres://postgres:ВАШ_ЛОКАЛЬНЫЙ_ПАРОЛЬ@127.0.0.1:5432/postgres"
+```
+
+Тест сам создаёт и удаляет временную базу. Если `psql` не находится, добавьте
+`C:\Program Files\PostgreSQL\16\bin` в PATH. Без `MS_DB_URL` стадия `db` будет «пропущена».
+
 **Semgrep** официально рассчитан на Linux и macOS. На Windows его удобнее запускать в CI
 (он запускается автоматически) или в WSL. Без него локальная стадия `semgrep` будет помечена как
 «пропущена» — это честный статус, не «пройдено».
