@@ -36,5 +36,8 @@
 - Включена на всех таблицах. Политика по умолчанию — запрет.
 - `company_id = any(public.my_companies())` для чтения; запись дополнительно проверяет `public.my_role(company_id)`.
 - Супер-админ определяется функцией `public.is_platform_admin()` по `platform_admins`.
-- Остаток и FIFO-списание выполняются функциями `security definer` (`ship_request`, `write_off`, `move_stock`) в одной транзакции с блокировкой партий, чтобы два кладовщика не списали одну коробку дважды.
+- Остаток и FIFO-списание выполняются функциями `security definer` в одной транзакции с блокировкой партий, чтобы два кладовщика не списали одну коробку дважды:
+  `receive_stock`, `create_request`, `start_request`, `cancel_request`, `ship_request`, `record_sale`, `void_movement`,
+  `write_off`, `move_stock`, `submit_stock_count`, `apply_stock_count`. Строки одной продажи или перемещения связаны `movements.group_id`.
+- Внутренние `take_fifo`, `check_lines`, `require_role`, `notify_stale_batches` закрыты для клиентов; последняя запускается pg_cron ежедневно в 03:00 UTC (08:00 Екатеринбург).
 - Закупочные цены (`unit_cost`) отдаются через представление, которое скрывает их от всех, кроме `owner`.
