@@ -30,7 +30,7 @@
     {
       "id": "unit", "owner": "qa-automation", "fixer": "dev-debug", "kind": "static",
       "requires": ["node"],
-      "cmd": "node --test \"tests/unit/*.test.js\""
+      "cmd": "node --experimental-strip-types --test \"tests/unit/*.test.js\""
     },
     {
       "id": "deps", "owner": "sec-auditor", "fixer": "dev-devops", "kind": "static",
