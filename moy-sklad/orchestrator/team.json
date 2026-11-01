@@ -43,6 +43,11 @@
       "cmd": "semgrep scan --config tests/security/semgrep.yml --config p/secrets --error --json --output reports/semgrep.json ."
     },
     {
+      "id": "app", "owner": "qa-automation", "fixer": "dev-frontend", "kind": "static",
+      "requires": ["npx", "file:app/node_modules"],
+      "cmd": "cd app && npx tsc --noEmit && npx expo export --platform web --output-dir ../reports/app-web"
+    },
+    {
       "id": "db", "owner": "sec-access-control", "fixer": "dev-database", "kind": "static",
       "requires": ["psql", "env:MS_DB_URL"],
       "cmd": "node --test \"tests/db/*.test.js\""

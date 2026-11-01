@@ -104,9 +104,29 @@ jobs:
       - name: Run database tests through the orchestrator
         run: node orchestrator/run.js --stages db --dispatch none --strict
 
+  app:
+    name: Mobile app typecheck and web build (demo data)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPO_PUBLIC_DEMO: '1'
+      EXPO_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Install app dependencies
+        working-directory: moy-sklad/app
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Typecheck and build through the orchestrator
+        run: node orchestrator/run.js --stages app --dispatch none --strict
+
   build:
     name: Build app (EAS preview)
-    needs: [checks, semgrep, database]
+    needs: [checks, semgrep, database, app]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
