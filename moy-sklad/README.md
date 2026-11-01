@@ -78,8 +78,13 @@ node orchestrator/run.js --dispatch none
 Подробно для Windows — [docs/WINDOWS-SETUP.md](docs/WINDOWS-SETUP.md).
 Hermes — [orchestrator/hermes/README.md](orchestrator/hermes/README.md).
 
+## Архитектура
+
+- [Требования MVP](docs/requirements/mvp.md)
+- [Обзор архитектуры](docs/architecture/overview.md), [роли и права](docs/architecture/roles.md), [модель данных](docs/architecture/data-model.md)
+- Решения: [0001 стек](docs/adr/0001-stack-expo-supabase.md), [0002 где хранить данные](docs/adr/0002-data-residency.md) (ждёт решения владельца), [0003 вход и уведомления](docs/adr/0003-auth-and-push.md)
+
 ## Что дальше
 
-`app/` (Expo) и `backend/supabase/` ещё не созданы: первая задача команды — `dev-architect`
-описывает архитектуру и роли, затем `dev-database`, `dev-backend` и `dev-frontend` строят приложение
-по контракту тестового API, а проверяющие уже готовы его проверять.
+`app/` (Expo) и `backend/supabase/` ещё не созданы. Следующие задачи: `dev-database` — схема и RLS
+по `data-model.md`, затем `dev-backend` и `dev-frontend` по контракту тестового API.
