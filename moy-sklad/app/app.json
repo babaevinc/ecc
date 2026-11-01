@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Мой склад",
+    "slug": "moy-sklad",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.babaevinc.sklad"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.babaevinc.sklad"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen",
+      "expo-secure-store"
+    ],
+    "scheme": "moysklad",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
