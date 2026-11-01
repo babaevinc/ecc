@@ -48,6 +48,8 @@ function missingRequirement(stage, root = ROOT) {
       try { require.resolve(req.slice(7), { paths: [root, ...(process.env.NODE_PATH || '').split(path.delimiter).filter(Boolean)] }); } catch { return req; }
     } else if (req.startsWith('file:')) {
       if (!fs.existsSync(path.join(root, req.slice(5)))) return req;
+    } else if (req.startsWith('env:')) {
+      if (!process.env[req.slice(4)]) return `${req} (set ${req.slice(4)})`;
     } else if (!hasBin(req)) return req;
     else if (req === 'docker' && spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 20000 }).status !== 0) return 'docker daemon (start Docker)';
   }

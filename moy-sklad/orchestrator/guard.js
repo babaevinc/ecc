@@ -53,7 +53,7 @@ function checkEnv(env, scope) {
       reasons.push(`environment variable ${name} looks like a production credential — unset it before testing`);
     }
   }
-  for (const name of ['DATABASE_URL', 'SUPABASE_DB_URL']) {
+  for (const name of ['DATABASE_URL', 'SUPABASE_DB_URL', 'MS_DB_URL']) {
     if (!env[name]) continue;
     let host = '';
     try { host = new URL(env[name]).hostname; } catch { host = '(unparseable)'; }

@@ -12,11 +12,12 @@ model: sonnet
 - Миграции в `backend/supabase/migrations/` (только вперёд, каждая с понятным именем).
 - Row Level Security: компания видит только свои данные; роль ограничивает действия; супер-админ — отдельная, явно проверяемая роль.
 - Индексы под главные запросы: остатки по складу, партии по дате, заявки по статусу.
-- Тестовые данные `backend/supabase/seed.test.sql` — только вымышленные.
+- Изменение остатков — только функциями `security definer` (`receive_stock`, `create_request`, `ship_request`, `write_off`, `void_movement`); прямой записи в `batches`/`movements` у клиентов нет.
+- Тестовые данные — только вымышленные, создаются в `tests/db/*.test.js`.
 
 ## Инструменты
 
-Чтение и правка `backend/supabase/**`. Bash только для локального стека: `npx supabase start`, `npx supabase db reset` (без `--linked`), `npx supabase db diff`, `npx supabase test db`.
+Чтение и правка `backend/supabase/**`, `tests/db/**`. Bash: `node --test "tests/db/*.test.js"` с `MS_DB_URL` на локальный PostgreSQL, `psql` к локальной базе, локальный стек `npx supabase start|db reset|db diff` (без `--linked`).
 
 ## Ограничения
 
@@ -30,8 +31,8 @@ model: sonnet
 
 ## Выход
 
-Миграции, политики RLS, seed, тесты политик (`supabase/tests/*.sql`), заметка о передаче.
+Миграции, политики RLS, функции, тесты `tests/db/*.test.js`, заметка о передаче.
 
 ## Готово, когда
 
-`npx supabase db reset` локально проходит с нуля, тесты RLS доказывают изоляцию компаний и ролей.
+Миграции применяются к пустой базе с нуля, `node orchestrator/run.js --stages db` зелёный, тесты доказывают изоляцию компаний и ролей.

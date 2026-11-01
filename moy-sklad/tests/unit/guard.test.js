@@ -21,6 +21,7 @@ test('environment must be test-like and free of production credentials', () => {
   assert.equal(guard.checkEnv({ MS_ENV: 'test', SUPABASE_PROD_KEY: 'x' }, scope).ok, false);
   assert.equal(guard.checkEnv({ MS_ENV: 'test', DATABASE_URL: 'postgres://u:p@db.real-host.ru:5432/x' }, scope).ok, false);
   assert.equal(guard.checkEnv({ MS_ENV: 'ci', DATABASE_URL: 'postgres://u:p@127.0.0.1:54322/postgres' }, scope).ok, true);
+  assert.equal(guard.checkEnv({ MS_ENV: 'test', MS_DB_URL: 'postgres://u:p@prod-db.example.com:5432/x' }, scope).ok, false);
 });
 
 test('destructive and production commands are refused', () => {

@@ -10,13 +10,13 @@
 | `dev-architect` | разработка | opus | — | Архитектура, роли, ADR, задания с критериями приёмки |
 | `dev-frontend` | разработка | sonnet | — | Expo / React Native, экраны в стиле iOS |
 | `dev-backend` | разработка | sonnet | исправляет `semgrep`, `access-control`, `red-team`, `zap`, `load` | API, вход, роли, уведомления |
-| `dev-database` | разработка | sonnet | — | Миграции, RLS, тестовые данные |
+| `dev-database` | разработка | sonnet | исправляет `db` | Миграции, RLS, функции остатков |
 | `dev-devops` | разработка | sonnet | исправляет `deps` | CI, сборка EAS, окружения |
 | `dev-debug` | разработка | sonnet | исправляет `unit`, `e2e` | Корневая причина + регрессионный тест |
 | `sec-pentest` | проверка | sonnet | `zap` | OWASP ZAP baseline, разбор находок |
 | `sec-red-team` | проверка | opus | `red-team` | Сценарии злоупотреблений как тесты |
 | `sec-auditor` | проверка | sonnet | `semgrep`, `deps` | Статический анализ, зависимости, workflow |
-| `sec-access-control` | проверка | sonnet | `access-control` | Матрица «роль × действие», изоляция компаний |
+| `sec-access-control` | проверка | sonnet | `access-control`, `db` | Матрица «роль × действие», изоляция компаний в API и в базе |
 | `qa-load` | проверка | sonnet | `load` | Locust, пороги скорости и ошибок |
 | `qa-automation` | проверка | sonnet | `unit`, `e2e` | node:test и Playwright по критериям приёмки |
 | `orchestrator` | координация | opus | все | Ведёт цикл и раздаёт задания |

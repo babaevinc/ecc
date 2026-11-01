@@ -43,6 +43,11 @@
       "cmd": "semgrep scan --config tests/security/semgrep.yml --config p/secrets --error --json --output reports/semgrep.json ."
     },
     {
+      "id": "db", "owner": "sec-access-control", "fixer": "dev-database", "kind": "static",
+      "requires": ["psql", "env:MS_DB_URL"],
+      "cmd": "node --test \"tests/db/*.test.js\""
+    },
+    {
       "id": "e2e", "owner": "qa-automation", "fixer": "dev-debug", "kind": "static",
       "requires": ["npx", "module:@playwright/test"],
       "cmd": "npx playwright test --project=api"

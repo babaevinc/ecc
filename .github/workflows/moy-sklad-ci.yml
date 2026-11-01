@@ -76,9 +76,37 @@ jobs:
           path: moy-sklad/reports
           if-no-files-found: ignore
 
+  database:
+    name: Database migrations, RLS and stock functions (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MS_DB_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - name: Run database tests through the orchestrator
+        run: node orchestrator/run.js --stages db --dispatch none --strict
+
   build:
     name: Build app (EAS preview)
-    needs: [checks, semgrep]
+    needs: [checks, semgrep, database]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

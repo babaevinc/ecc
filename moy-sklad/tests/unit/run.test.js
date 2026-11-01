@@ -27,6 +27,7 @@ test('missing tools make a stage skipped, never passed', () => {
   assert.equal(run.missingRequirement({ requires: ['definitely-not-a-real-tool-ms'] }), 'definitely-not-a-real-tool-ms');
   assert.equal(run.missingRequirement({ requires: ['file:does-not-exist.lock'] }), 'file:does-not-exist.lock');
   assert.equal(run.missingRequirement({ requires: ['node'] }), null);
+  assert.match(run.missingRequirement({ requires: ['env:MS_SURELY_UNSET_VAR'] }), /MS_SURELY_UNSET_VAR/);
   const r = run.runStage({ id: 'x', requires: ['definitely-not-a-real-tool-ms'], cmd: 'true' }, { target: 'http://127.0.0.1:8787' });
   assert.equal(r.status, 'skipped');
 });
