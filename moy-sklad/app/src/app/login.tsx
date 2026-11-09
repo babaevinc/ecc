@@ -19,21 +19,25 @@ export default function LoginScreen() {
 
   if (ready && session) return <Redirect href="/" />;
 
-  async function handleSubmit() {
+  async function signIn(user: string, pass: string) {
     if (!api) return;
-    if (!login.trim() || !password) {
-      setError('Введите логин и пароль');
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
-      await api.signIn(login, password);
+      await api.signIn(user, pass);
     } catch (e) {
       setError(userMessage(e));
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleSubmit() {
+    if (!login.trim() || !password) {
+      setError('Введите логин и пароль');
+      return;
+    }
+    signIn(login, password);
   }
 
   return (
@@ -43,7 +47,13 @@ export default function LoginScreen() {
           <Text accessibilityRole="header" style={[type.largeTitle, { color: c.text }]}>Мой склад</Text>
           <Text style={[type.body, styles.subtitle, { color: c.secondary }]}>Войдите, чтобы продолжить</Text>
           {problem ? <Message tone="error" text={problem} /> : null}
-          {api?.isDemo ? <Message tone="info" text={`Демо-режим, вымышленные данные: ${DEMO_LOGIN} / ${DEMO_PASSWORD}`} /> : null}
+          {api?.isDemo ? (
+            <>
+              <Message tone="info" text={`Демо-режим, вымышленные данные: ${DEMO_LOGIN} / ${DEMO_PASSWORD}`} />
+              {/* Typing a password on a phone keyboard is the usual way demo sign-in fails. */}
+              <PrimaryButton title="Войти в демо" onPress={() => signIn(DEMO_LOGIN, DEMO_PASSWORD)} busy={busy} />
+            </>
+          ) : null}
           <View style={styles.fields}>
             <Field value={login} onChangeText={setLogin} placeholder="Email или телефон" autoCapitalize="none"
               autoComplete="username" textContentType="username" keyboardType="email-address" accessibilityLabel="Логин" />
