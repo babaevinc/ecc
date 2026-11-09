@@ -8,12 +8,23 @@ function json(body: unknown, status: number = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
+/** Constant-time comparison, so response timing does not reveal how much of the key matched. */
+function sameSecret(given: string, expected: string): boolean {
+  const a = new TextEncoder().encode(given);
+  const b = new TextEncoder().encode(expected);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < b.length; i++) diff |= (a[i] ?? 0) ^ b[i];
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method !== 'POST') return json({ error: 'use POST' }, 405);
 
   const url = Deno.env.get('SUPABASE_URL');
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !key) return json({ error: 'server is not configured' }, 500);
+  // Only pg_cron (service role) may run this: the anon key ships inside the app, and every run claims rows.
+  if (!sameSecret(req.headers.get('Authorization') ?? '', `Bearer ${key}`)) return json({ error: 'forbidden' }, 403);
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
   const { data, error } = await supabase.rpc('claim_push_batch', { p_limit: 500 });

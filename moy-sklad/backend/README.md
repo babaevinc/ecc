@@ -19,31 +19,17 @@ node --experimental-strip-types --test tests/unit/push.test.js
 Тесты создают и удаляют свою временную базу. Шим повторяет права Supabase по умолчанию,
 поэтому забытый `revoke` в миграции роняет тесты.
 
-## Развёртывание на Supabase (вариант B, ADR 0002)
+## Развёртывание на своём сервере (вариант B, ADR 0002)
 
-Выполняет человек или `dev-devops` через `moy-sklad-deploy` с ручным утверждением.
+Пошагово — в `deploy/README.md`. Коротко: `moy-sklad-deploy` с ручным утверждением загружает релиз
+на сервер по SSH и запускает `deploy/migrate.sh`, который:
 
-1. Миграции: `supabase db push` (в deploy-workflow).
-2. Функция: `supabase functions deploy notify`.
-3. Секреты сервера в Vault (один раз, в SQL-редакторе Supabase; значения — из настроек проекта, не из репозитория):
-
-   ```sql
-   select vault.create_secret('https://<адрес-проекта>', 'project_url');
-   select vault.create_secret('<service role key>', 'service_role_key');
-   ```
-
-4. Ежеминутная отправка (нужны расширения `pg_cron` и `pg_net`):
-
-   ```sql
-   select cron.schedule('moy-sklad-notify', '* * * * *', $$
-     select net.http_post(
-       url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/notify',
-       headers := jsonb_build_object(
-         'Content-Type', 'application/json',
-         'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key')),
-       body := '{}'::jsonb)
-   $$);
-   ```
+1. применяет новые миграции по порядку имён, каждую в одной транзакции, и записывает их
+   в `supabase_migrations.schema_migrations`;
+2. копирует функцию `notify` (с `_shared/`) в `volumes/functions/` и перезапускает сервис функций;
+3. сохраняет в Vault `project_url` (адрес шлюза внутри Docker) и `service_role_key` и ставит ежеминутную
+   задачу `moy-sklad-notify` (pg_cron + pg_net), которая вызывает `notify` с ключом service role.
+   Другие ключи функция отклоняет с кодом 403: публичный ключ есть в каждом приложении.
 
 Ежедневная проверка партий старше 7 дней (`notify_stale_batches`, 08:00 по Екатеринбургу) создаётся
 миграцией сама, если на сервере есть `pg_cron`.

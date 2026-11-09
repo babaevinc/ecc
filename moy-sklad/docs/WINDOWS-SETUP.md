@@ -163,8 +163,8 @@ Hermes устанавливается по его собственной док�
 
 1. **Settings → Environments → New environment** → имя `production`.
 2. В `production` включите **Required reviewers** и добавьте себя (и при желании второго человека).
-3. В том же окружении добавьте секреты: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`,
-   `SUPABASE_PROJECT_REF`, `EXPO_TOKEN`.
+3. В том же окружении добавьте секреты своего сервера `DEPLOY_HOST`, `DEPLOY_SSH_KEY`,
+   `DEPLOY_SSH_KNOWN_HOSTS` (как их получить — `deploy/README.md`) и `EXPO_TOKEN`.
 4. В **Settings → Secrets and variables → Actions** добавьте `EXPO_TOKEN` для тестовых сборок.
 
 Развёртывание: **Actions → moy-sklad deploy (production) → Run workflow**, введите `DEPLOY`.

@@ -10,7 +10,11 @@
       "Edit(orchestrator/scope.json)",
       "Write(orchestrator/scope.json)",
       "Read(.env.production)",
-      "Read(**/.env.production)"
+      "Read(**/.env.production)",
+      "Bash(ssh server:*)",
+      "Bash(bash deploy/install.sh:*)",
+      "Bash(bash deploy/migrate.sh:*)",
+      "Bash(bash /opt/moy-sklad/deploy/*:*)"
     ]
   },
   "hooks": {
