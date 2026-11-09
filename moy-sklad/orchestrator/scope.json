@@ -1,0 +1,31 @@
+{
+  "$comment": "Rules of engagement. Active security and load tests may only target the origins listed here. Edit only with the project owner's written approval.",
+  "approvedBy": "project owner",
+  "environment": "test",
+  "allowedEnvironments": ["local", "test", "ci"],
+  "allowedTargets": [
+    "http://127.0.0.1:8787",
+    "http://localhost:8787",
+    "http://host.docker.internal:8787"
+  ],
+  "allowedDatabaseHosts": ["127.0.0.1", "localhost", "db", "supabase-db"],
+  "forbiddenEnvPatterns": ["PROD", "PRODUCTION", "LIVE_"],
+  "activeTools": ["zap", "zap-baseline", "zap-api-scan", "zap-full-scan", "locust", "nmap", "sqlmap", "nikto", "ffuf", "hydra", "curl", "wget", "k6", "ab"],
+  "destructivePatterns": [
+    "rm\\s+-rf\\s+(/|~|\\$HOME|\\.\\.)",
+    "\\bdrop\\s+(database|schema)\\b",
+    "\\btruncate\\s+table\\b",
+    "git\\s+push\\s+.*--force",
+    "git\\s+reset\\s+--hard\\s+origin",
+    "supabase\\s+db\\s+reset\\s+.*--linked",
+    "supabase\\s+db\\s+push\\b",
+    "eas\\s+submit\\b",
+    "mkfs\\b",
+    "dd\\s+if=",
+    ":\\(\\)\\s*\\{\\s*:\\|:&\\s*\\};:"
+  ],
+  "limits": {
+    "maxIterations": 3,
+    "loadTest": { "maxUsers": 50, "maxSpawnRate": 10, "maxDuration": "60s" }
+  }
+}

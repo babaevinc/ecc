@@ -1,0 +1,82 @@
+{
+  "$comment": "Machine-readable contract of the «Мой склад» agent team. Prompts, duties and limits live in .claude/agents/<id>.md; this file says who owns which check, what each agent consumes and produces, and who fixes what.",
+  "version": 1,
+  "cycle": ["develop", "test", "detect", "fix", "reverify"],
+  "dispatch": {
+    "claude": {
+      "command": "claude",
+      "args": ["-p", "--agent", "{agent}", "--permission-mode", "acceptEdits", "--output-format", "json"]
+    },
+    "handoff": {
+      "inbox": ".orchestrator/inbox",
+      "eccMemory": ["ecc", "memory", "handoff", "--from", "orchestrator", "--target", "{agent}", "--title", "{title}", "--kind", "handoff", "--tag", "moy-sklad", "--stdin"]
+    }
+  },
+  "agents": [
+    { "id": "dev-architect", "group": "dev", "inputs": ["docs/requirements/*.md", "reports/findings.json"], "outputs": ["docs/architecture/*.md", "docs/adr/*.md"] },
+    { "id": "dev-frontend", "group": "dev", "inputs": ["docs/architecture/*.md", "handoffs"], "outputs": ["app/**"] },
+    { "id": "dev-backend", "group": "dev", "inputs": ["docs/architecture/*.md", "handoffs"], "outputs": ["backend/**"] },
+    { "id": "dev-database", "group": "dev", "inputs": ["docs/architecture/*.md", "handoffs"], "outputs": ["backend/supabase/migrations/*.sql", "backend/supabase/seed.test.sql"] },
+    { "id": "dev-devops", "group": "dev", "inputs": ["handoffs", "reports/run-*.json"], "outputs": [".github/workflows/moy-sklad-*.yml", "app/eas.json", "docs/WINDOWS-SETUP.md"] },
+    { "id": "dev-debug", "group": "dev", "inputs": ["reports/findings.json", "reports/*"], "outputs": ["minimal fix in app/** or backend/**", "regression test in tests/**"] },
+    { "id": "sec-pentest", "group": "verify", "inputs": ["orchestrator/scope.json", "backend/**"], "outputs": ["reports/zap-baseline.json", "reports/zap-baseline.html"] },
+    { "id": "sec-red-team", "group": "verify", "inputs": ["orchestrator/scope.json", "docs/architecture/*.md"], "outputs": ["tests/e2e/abuse.spec.js", "reports/red-team.md"] },
+    { "id": "sec-auditor", "group": "verify", "inputs": ["source tree", "package.json"], "outputs": ["reports/semgrep.json", "reports/npm-audit.json", "reports/audit.md"] },
+    { "id": "sec-access-control", "group": "verify", "inputs": ["docs/architecture/roles.md", "backend/**"], "outputs": ["tests/e2e/access-control.spec.js", "reports/access-matrix.md"] },
+    { "id": "qa-load", "group": "verify", "inputs": ["orchestrator/scope.json"], "outputs": ["tests/load/locustfile.py", "reports/locust_stats.csv"] },
+    { "id": "qa-automation", "group": "verify", "inputs": ["docs/requirements/*.md", "app/**", "backend/**"], "outputs": ["tests/unit/**", "tests/e2e/*.spec.js", "reports/playwright/**"] }
+  ],
+  "stages": [
+    {
+      "id": "unit", "owner": "qa-automation", "fixer": "dev-debug", "kind": "static",
+      "requires": ["node"],
+      "cmd": "node --experimental-strip-types --test \"tests/unit/*.test.js\""
+    },
+    {
+      "id": "deps", "owner": "sec-auditor", "fixer": "dev-devops", "kind": "static",
+      "requires": ["npm", "file:package-lock.json"],
+      "cmd": "npm audit --audit-level=high"
+    },
+    {
+      "id": "semgrep", "owner": "sec-auditor", "fixer": "dev-backend", "kind": "static",
+      "requires": ["semgrep"],
+      "cmd": "semgrep scan --config tests/security/semgrep.yml --config p/secrets --error --json --output reports/semgrep.json ."
+    },
+    {
+      "id": "app", "owner": "qa-automation", "fixer": "dev-frontend", "kind": "static",
+      "requires": ["npx", "file:app/node_modules"],
+      "cmd": "cd app && npx tsc --noEmit && npx expo export --platform web --output-dir ../reports/app-web"
+    },
+    {
+      "id": "db", "owner": "sec-access-control", "fixer": "dev-database", "kind": "static",
+      "requires": ["psql", "env:MS_DB_URL"],
+      "cmd": "node --test \"tests/db/*.test.js\""
+    },
+    {
+      "id": "e2e", "owner": "qa-automation", "fixer": "dev-debug", "kind": "static",
+      "requires": ["npx", "module:@playwright/test"],
+      "cmd": "npx playwright test --project=api"
+    },
+    {
+      "id": "access-control", "owner": "sec-access-control", "fixer": "dev-backend", "kind": "static",
+      "requires": ["npx", "module:@playwright/test"],
+      "cmd": "npx playwright test --project=access-control"
+    },
+    {
+      "id": "red-team", "owner": "sec-red-team", "fixer": "dev-backend", "kind": "active",
+      "requires": ["npx", "module:@playwright/test"],
+      "cmd": "npx playwright test --project=abuse"
+    },
+    {
+      "id": "zap", "owner": "sec-pentest", "fixer": "dev-backend", "kind": "active",
+      "requires": ["docker"],
+      "warnExitCodes": [2],
+      "cmd": "docker run --rm {dockerNetwork} -v \"{reportsDir}:/zap/wrk:rw\" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t {dockerTarget} -J zap-baseline.json -r zap-baseline.html"
+    },
+    {
+      "id": "load", "owner": "qa-load", "fixer": "dev-backend", "kind": "active",
+      "requires": ["locust"],
+      "cmd": "locust -f tests/load/locustfile.py --headless -u 20 -r 5 -t 30s --host {target} --only-summary --csv reports/locust"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+rules:
+  - id: ms-no-eval
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Code execution from strings (eval / new Function) is forbidden. Parse data explicitly instead.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+
+  - id: ms-tls-verification-disabled
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: TLS certificate verification is disabled. Never ship this; use a proper CA bundle in tests.
+    pattern-either:
+      - pattern: "{..., rejectUnauthorized: false, ...}"
+      - pattern: process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
+  - id: ms-password-in-logs
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: A password or token is written to the log. Log the event, not the secret.
+    pattern-either:
+      - pattern: console.$LOG(..., $OBJ.password, ...)
+      - pattern: console.$LOG(..., $OBJ.token, ...)
+      - pattern: console.$LOG(..., password, ...)
+
+  - id: ms-sql-string-building
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: SQL built from strings allows injection. Use parameters or the Supabase query builder.
+    pattern-either:
+      - pattern: $DB.query("..." + $X, ...)
+      - pattern: $DB.query($A + $X, ...)
+      - pattern-regex: \.(query|execute|raw)\(\s*`[^`]*\$\{
+
+  - id: ms-insecure-random
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Math.random() is predictable. Use crypto.randomBytes / crypto.randomUUID for tokens, ids and codes.
+    pattern: Math.random()
+
+  - id: ms-service-key-in-app
+    languages: [javascript, typescript, json]
+    severity: ERROR
+    message: The Supabase service role key must never reach the mobile app. Use the anon key and RLS.
+    paths:
+      include: ["app/**"]
+    pattern-regex: (?i)service[_-]?role

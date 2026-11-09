@@ -1,0 +1,13 @@
+# Fragment for ~/.hermes/config.yaml — the rules-of-engagement guard for Hermes.
+# Format taken from ECC docs/HERMES-HOOKS.md: hooks keyed by event, `matcher` is a regex
+# matched with fullmatch against the tool name, `command` is run verbatim (no ~ expansion),
+# the hook receives the Claude-Code-compatible JSON payload on stdin and blocks by printing
+# {"decision": "block", "reason": ...}.
+#
+# Replace /ABSOLUTE/PATH/TO/ecc with your checkout (Windows/WSL: the Linux path inside WSL).
+# ".*" sends every tool call to the guard; it ignores calls without commands or URLs.
+hooks:
+  pre_tool_call:
+    - matcher: ".*"
+      command: "node /ABSOLUTE/PATH/TO/ecc/moy-sklad/orchestrator/guard.js --hook=hermes"
+      timeout: 10

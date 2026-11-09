@@ -1,0 +1,109 @@
+name: moy-sklad deploy (production)
+
+# Production deploy is never automatic:
+#  1. a person starts it by hand and types DEPLOY;
+#  2. all checks run again on the exact commit;
+#  3. the deploy job waits in the GitHub environment "production" until a required reviewer approves it
+#     (Settings → Environments → production → Required reviewers).
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm a production release'
+        required: true
+      install_domain:
+        description: 'First release only: server domain (e.g. sklad.example.ru) to run deploy/install.sh. Leave empty afterwards.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moy-sklad-production
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: moy-sklad
+
+jobs:
+  verify:
+    name: Re-verify before release
+    if: inputs.confirm == 'DEPLOY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MS_ENV: ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund --ignore-scripts
+      - run: node orchestrator/run.js --stages unit,deps,e2e,access-control,red-team --dispatch none --strict
+
+  deploy:
+    name: Deploy to production (manual approval)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    env:
+      # Our own server (ADR 0002, option B): reached over SSH with a pinned host key.
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+      INSTALL_DOMAIN: ${{ inputs.install_domain }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check what can be deployed
+        id: pre
+        run: |
+          db=false; app=false
+          if [ -d backend/supabase/migrations ] && [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_SSH_KNOWN_HOSTS" ]; then db=true; fi
+          if [ -f app/package.json ] && [ -n "$EXPO_TOKEN" ]; then app=true; fi
+          echo "db=$db" >> "$GITHUB_OUTPUT"; echo "app=$app" >> "$GITHUB_OUTPUT"
+          if [ "$db" = false ] && [ "$app" = false ]; then echo "::notice::Nothing to deploy yet: server or Expo secrets are not configured (see moy-sklad/deploy/README.md)."; fi
+          if [ -n "$INSTALL_DOMAIN" ] && ! printf '%s' "$INSTALL_DOMAIN" | grep -Eq '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$'; then
+            echo "::error::install_domain is not a domain name"; exit 1
+          fi
+      - name: Prepare SSH (pinned host key, no password prompts)
+        if: steps.pre.outputs.db == 'true'
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host server\n  HostName %s\n  User root\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  BatchMode yes\n' "$DEPLOY_HOST" > ~/.ssh/config
+      - name: Upload the release to the server
+        if: steps.pre.outputs.db == 'true'
+        run: |
+          release="/opt/moy-sklad/releases/$GITHUB_SHA"
+          tar -czf - deploy backend/supabase/migrations backend/supabase/functions |
+            ssh server "set -e; mkdir -p '$release'; tar -xzf - -C '$release'; rm -rf /opt/moy-sklad/deploy; cp -r '$release/deploy' /opt/moy-sklad/deploy"
+      - name: First-time server setup (deploy/install.sh)
+        if: steps.pre.outputs.db == 'true' && inputs.install_domain != ''
+        run: ssh server "bash /opt/moy-sklad/deploy/install.sh '$INSTALL_DOMAIN'"
+      - name: Apply database migrations and the notify function (deploy/migrate.sh)
+        if: steps.pre.outputs.db == 'true'
+        run: ssh server "bash /opt/moy-sklad/deploy/migrate.sh '/opt/moy-sklad/releases/$GITHUB_SHA'"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        if: steps.pre.outputs.app == 'true'
+        with:
+          node-version: '22'
+      - uses: expo/expo-github-action@v8
+        if: steps.pre.outputs.app == 'true'
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Build and submit to App Store and Google Play
+        if: steps.pre.outputs.app == 'true'
+        working-directory: moy-sklad/app
+        run: |
+          npm ci --ignore-scripts
+          eas build --platform all --profile production --non-interactive --auto-submit
