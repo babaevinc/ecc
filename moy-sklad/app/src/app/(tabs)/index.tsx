@@ -21,14 +21,14 @@ export default function HomeScreen() {
   const summaries = data ? summarizeByProduct(data.batches, data.products, today, scope) : [];
   const stale = data ? staleBatches(data.batches.filter(b => !scope || scope.has(b.warehouseId)), today) : [];
 
-  const signOut = (
-    <Pressable accessibilityRole="button" onPress={() => api.signOut()}>
-      <Text style={[type.body, { color: c.accent }]}>Выйти</Text>
+  const scanButton = (
+    <Pressable accessibilityRole="button" accessibilityLabel="Сканировать этикетку" onPress={() => router.push('/scan')}>
+      <Text style={[type.bodyBold, { color: c.accent }]}>Скан</Text>
     </Pressable>
   );
 
   return (
-    <Screen title="Мой склад" refreshing={loading} onRefresh={reload} right={signOut}>
+    <Screen title="Мой склад" refreshing={loading} onRefresh={reload} right={scanButton}>
       {api.isDemo ? <Message tone="info" text="Демо-режим: показаны вымышленные данные" /> : null}
       {data && data.warehouses.length > 1 ? (
         <Segmented value={warehouse} onChange={setWarehouse}

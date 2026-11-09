@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { stepQty, type Unit } from '@/domain/stock';
 import { space, type, usePalette } from '@/theme';
 
-type ScreenProps = { title: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void; right?: ReactNode };
+type ScreenProps = { title?: string; children: ReactNode; refreshing?: boolean; onRefresh?: () => void; right?: ReactNode };
 
 export function Screen({ title, children, refreshing, onRefresh, right }: ScreenProps) {
   const c = usePalette();
@@ -16,10 +16,12 @@ export function Screen({ title, children, refreshing, onRefresh, right }: Screen
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} /> : undefined}>
-        <View style={styles.header}>
-          <Text accessibilityRole="header" style={[type.largeTitle, { color: c.text }]}>{title}</Text>
-          {right}
-        </View>
+        {title ? (
+          <View style={styles.header}>
+            <Text accessibilityRole="header" style={[type.largeTitle, { color: c.text }]}>{title}</Text>
+            {right}
+          </View>
+        ) : <View style={styles.headerless} />}
         {children}
       </ScrollView>
     </SafeAreaView>
@@ -143,6 +145,7 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: space.l, paddingBottom: 120 },
   // On web the tab bar floats at the top, so the large title starts below it.
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: Platform.OS === 'web' ? 92 : space.s, marginBottom: space.l },
+  headerless: { height: space.l },
   groupWrap: { marginBottom: space.xl },
   groupTitle: { marginLeft: space.l, marginBottom: space.s },
   group: { borderRadius: 12, overflow: 'hidden' },
@@ -158,5 +161,5 @@ const styles = StyleSheet.create({
   field: { height: 48, borderRadius: 10, paddingHorizontal: space.l, marginBottom: space.m },
   primary: { height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: space.l },
   banner: { borderRadius: 14, padding: space.l, marginBottom: space.l, gap: 2 },
-  message: { marginTop: space.m },
+  message: { marginTop: space.m, marginBottom: space.m },
 });

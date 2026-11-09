@@ -30,6 +30,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Уведомления</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'bell', selected: 'bell.fill' }} />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Label>Ещё</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'ellipsis.circle', selected: 'ellipsis.circle.fill' }} />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

@@ -27,7 +27,15 @@
     "plugins": [
       "expo-router",
       "expo-splash-screen",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Камера нужна, чтобы сканировать штрихкоды и QR-коды на этикетках товаров и партий.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "scheme": "moysklad",
     "experiments": {
