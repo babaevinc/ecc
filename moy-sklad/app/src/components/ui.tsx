@@ -1,6 +1,6 @@
 // Small iOS-style building blocks shared by all screens.
 import type { ComponentProps, ReactNode } from 'react';
-import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { stepQty, type Unit } from '@/domain/stock';
@@ -126,6 +126,31 @@ export function PrimaryButton({ title, onPress, busy, disabled }: { title: strin
   );
 }
 
+type SmallButtonProps = { title: string; onPress: () => void; tone?: 'accent' | 'plain' | 'danger'; busy?: boolean; label?: string };
+
+/** Compact action inside a card: «Отгрузить», «Отменить». */
+export function SmallButton({ title, onPress, tone = 'plain', busy, label }: SmallButtonProps) {
+  const c = usePalette();
+  const bg = tone === 'accent' ? c.accent : tone === 'danger' ? c.danger : c.tint;
+  const fg = tone === 'plain' ? c.accent : c.onAccent;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label ?? title} accessibilityState={{ busy: !!busy, disabled: !!busy }} disabled={busy} onPress={onPress}
+      style={({ pressed }) => [styles.small, { backgroundColor: bg, opacity: busy ? 0.5 : pressed ? 0.75 : 1 }]}>
+      <Text style={[type.footnote, { color: fg, fontWeight: '600' }]}>{title}</Text>
+    </Pressable>
+  );
+}
+
+export function SwitchRow({ title, value, onChange }: { title: string; value: boolean; onChange: (v: boolean) => void }) {
+  const c = usePalette();
+  return (
+    <View style={styles.switchRow}>
+      <Text style={[type.body, styles.rowText, { color: c.text }]}>{title}</Text>
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.accent }} accessibilityLabel={title} />
+    </View>
+  );
+}
+
 export function Banner({ title, text, onPress }: { title: string; text: string; onPress?: () => void }) {
   const c = usePalette();
   return (
@@ -164,4 +189,6 @@ const styles = StyleSheet.create({
   primary: { height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: space.l },
   banner: { borderRadius: 14, padding: space.l, marginBottom: space.l, gap: 2 },
   message: { marginTop: space.m, marginBottom: space.m },
+  small: { minHeight: 36, paddingHorizontal: space.m, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: space.s, marginBottom: space.s },
 });

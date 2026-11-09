@@ -26,9 +26,9 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Приход</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'plus.circle', selected: 'plus.circle.fill' }} />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="notifications">
-        <NativeTabs.Trigger.Label>Уведомления</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'bell', selected: 'bell.fill' }} />
+      <NativeTabs.Trigger name="ship">
+        <NativeTabs.Trigger.Label>Отгрузка</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'truck.box', selected: 'truck.box.fill' }} />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="more">
         <NativeTabs.Trigger.Label>Ещё</NativeTabs.Trigger.Label>

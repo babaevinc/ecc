@@ -1,7 +1,8 @@
-import { useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 
 import type { AppNotification } from '@/api/types';
+import { RequireSession } from '@/components/require-session';
 import { Group, Message, Row, Screen } from '@/components/ui';
 import { STALE_DAYS } from '@/domain/stock';
 import { useApi } from '@/state/session';
@@ -21,7 +22,16 @@ function titleOf(n: AppNotification): string {
 const when = (iso: string): string =>
   new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-export default function NotificationsScreen() {
+export default function NotificationsRoute() {
+  return (
+    <RequireSession>
+      <Stack.Screen options={{ headerShown: true, title: 'Уведомления', headerBackTitle: 'Назад' }} />
+      <NotificationsScreen />
+    </RequireSession>
+  );
+}
+
+function NotificationsScreen() {
   const api = useApi();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +52,7 @@ export default function NotificationsScreen() {
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   return (
-    <Screen title="Уведомления" refreshing={loading} onRefresh={reload}>
+    <Screen refreshing={loading} onRefresh={reload}>
       {error ? <Message tone="error" text={error} /> : null}
       <Group>
         {items.length ? items.map((n, i) => (

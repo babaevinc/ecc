@@ -4,13 +4,17 @@ import { messageForCode } from '@/domain/errors';
 import type { Product, StockBatch, Unit, Warehouse } from '@/domain/stock';
 import { secureStorage } from './secure-storage';
 import type { ScannerKind } from '@/domain/scan';
-import { ApiError, type Api, type AppNotification, type Scanner, type Session } from './types';
+import type { CartLine, RequestStatus, Role, WasteReason } from '@/domain/ops';
+import { ApiError, type Api, type AppNotification, type DayOp, type Scanner, type Session, type StockRequest } from './types';
 
 type DbError = { code?: string | null } | null;
 
 function check(error: DbError): void {
   if (error) throw new ApiError(messageForCode(error.code));
 }
+
+/** Lines in the shape the stock functions read (check_lines / create_request). */
+const toLines = (lines: CartLine[]) => lines.map(l => ({ product_id: l.productId, qty: l.qty, ...(l.price === null ? {} : { price: l.price }) }));
 
 const PHONE = /^\+?\d[\d\s()-]{6,}$/;
 
@@ -146,6 +150,113 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
 
     async markScannerSeen(id) {
       const { error } = await sb.rpc('mark_scanner_seen', { p_scanner: id });
+      check(error);
+    },
+
+    async myAccess() {
+      const { data: auth } = await sb.auth.getSession();
+      const userId = auth.session?.user.id;
+      if (!userId) return null;
+      const { data, error } = await sb.from('members').select('role, warehouse_ids').eq('user_id', userId).limit(1);
+      check(error);
+      const m = data?.[0];
+      return m ? { role: m.role as Role, warehouseIds: (m.warehouse_ids ?? []) as string[] } : null;
+    },
+
+    async listRequests() {
+      const { data, error } = await sb.from('requests')
+        .select('id, number, warehouse_id, client, status, created_by, created_at, request_lines(product_id, qty, price)')
+        .order('created_at', { ascending: false }).limit(50);
+      check(error);
+      return (data ?? []).map((r): StockRequest => ({
+        id: r.id, number: r.number, warehouseId: r.warehouse_id, client: r.client, status: r.status as RequestStatus,
+        createdBy: r.created_by, createdAt: r.created_at,
+        lines: ((r.request_lines ?? []) as { product_id: string; qty: number | string; price: number | string | null }[])
+          .map((l): CartLine => ({ productId: l.product_id, qty: Number(l.qty), price: l.price === null ? null : Number(l.price) })),
+      }));
+    },
+
+    async createRequest(request) {
+      const { data: id, error } = await sb.rpc('create_request', {
+        p_warehouse: request.warehouseId, p_lines: toLines(request.lines), p_client: request.client.trim() || null,
+      });
+      check(error);
+      const { data, error: readError } = await sb.from('requests').select('number').eq('id', String(id)).single();
+      check(readError);
+      if (!data) throw new ApiError('Заявка создана, но не найдена — обновите список');
+      return data.number;
+    },
+
+    async startRequest(id) {
+      const { error } = await sb.rpc('start_request', { p_request: id });
+      check(error);
+    },
+
+    async shipRequest(id) {
+      const { error } = await sb.rpc('ship_request', { p_request: id });
+      if (error?.code === '22023') throw new ApiError('На складе не хватает товара для этой заявки');
+      check(error);
+    },
+
+    async cancelRequest(id) {
+      const { error } = await sb.rpc('cancel_request', { p_request: id });
+      check(error);
+    },
+
+    async recordSale(sale) {
+      const { error } = await sb.rpc('record_sale', {
+        p_warehouse: sale.warehouseId, p_lines: toLines(sale.lines), p_markdown: sale.markdown, p_note: sale.note.trim() || null,
+      });
+      if (error?.code === '22023') throw new ApiError('На складе не хватает товара — обновите остатки');
+      check(error);
+    },
+
+    async writeOff(input) {
+      const { error } = await sb.rpc('write_off_fifo', {
+        p_warehouse: input.warehouseId, p_product: input.productId, p_qty: input.qty, p_reason: input.reason, p_note: input.note.trim() || null,
+      });
+      if (error?.code === '22023') throw new ApiError('Нельзя списать больше, чем лежит на складе');
+      check(error);
+    },
+
+    async listTodayOps() {
+      const { data: auth } = await sb.auth.getSession();
+      const me = auth.session?.user.id;
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const { data: rows, error } = await sb.from('movements')
+        .select('id, group_id, batch_id, qty, kind, price, markdown, reason, created_by, created_at')
+        .in('kind', ['sale', 'waste']).is('voided_at', null).gte('created_at', start.toISOString())
+        .order('created_at', { ascending: false }).limit(500);
+      check(error);
+      const ids = [...new Set((rows ?? []).map(r => r.batch_id as string))];
+      const batches = new Map<string, { warehouse_id: string; product_id: string }>();
+      if (ids.length) {
+        const { data, error: batchError } = await sb.from('batches').select('id, warehouse_id, product_id').in('id', ids);
+        check(batchError);
+        for (const b of data ?? []) batches.set(b.id, b);
+      }
+      const ops = new Map<string, DayOp>();
+      for (const r of rows ?? []) {
+        const b = batches.get(r.batch_id);
+        if (!b) continue;
+        const group = (r.group_id as string | null) ?? r.id;
+        const op = ops.get(group) ?? {
+          key: r.id, kind: r.kind as 'sale' | 'waste', warehouseId: b.warehouse_id, items: [], markdown: !!r.markdown,
+          reason: (r.reason as WasteReason | null) ?? null, createdAt: r.created_at, mine: r.created_by === me,
+        };
+        const price = r.price === null ? null : Number(r.price);
+        const same = op.items.find(i => i.productId === b.product_id && i.price === price);
+        const items = same
+          ? op.items.map(i => (i === same ? { ...i, qty: Math.round((i.qty + Number(r.qty)) * 1000) / 1000 } : i))
+          : [...op.items, { productId: b.product_id, qty: Number(r.qty), price }];
+        ops.set(group, { ...op, items });
+      }
+      return [...ops.values()];
+    },
+
+    async cancelOp(key) {
+      const { error } = await sb.rpc('void_movement', { p_movement: key });
       check(error);
     },
   };

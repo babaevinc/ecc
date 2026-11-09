@@ -12,6 +12,9 @@ export default function MoreScreen() {
         <Row title="Сканеры" subtitle="Добавить и проверить Bluetooth, USB и терминалы" onPress={() => router.push('/scanners')} last />
       </Group>
       <Group>
+        <Row title="Уведомления" subtitle="Заявки, отгрузки и старые партии" onPress={() => router.push('/notifications')} last />
+      </Group>
+      <Group>
         <Row title="Выйти" onPress={() => api.signOut()} last />
       </Group>
     </Screen>
