@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { Group, Message, Row, Screen } from '@/components/ui';
 import { ageDays, formatQty, todayIso, WARN_DAYS } from '@/domain/stock';
 import { useStockData } from '@/state/use-stock-data';
@@ -11,6 +13,7 @@ export default function StockScreen() {
 
   return (
     <Screen title="Склады" refreshing={loading} onRefresh={reload}>
+      <Message tone="info" text="Нажмите на партию, чтобы напечатать для неё QR-этикетку." />
       {error ? <Message tone="error" text={error} /> : null}
       {(data?.warehouses ?? []).map(w => {
         const batches = (data?.batches ?? [])
@@ -24,7 +27,8 @@ export default function StockScreen() {
               return (
                 <Row key={b.id} title={p.name} value={formatQty(b.leftQty, p.unit)} last={i === batches.length - 1}
                   subtitle={`партия ${shortDate(b.receivedOn)} · ${age} дн.${b.supplier ? ` · ${b.supplier}` : ''}`}
-                  tone={age >= WARN_DAYS ? 'warning' : 'normal'} />
+                  tone={age >= WARN_DAYS ? 'warning' : 'normal'}
+                  onPress={() => router.push({ pathname: '/label', params: { batch: b.id } })} />
               );
             }) : <Row title="Пусто" last />}
           </Group>

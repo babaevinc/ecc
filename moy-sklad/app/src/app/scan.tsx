@@ -135,7 +135,8 @@ function BatchCard({ batch, data }: { batch: StockBatch; data: ReturnType<typeof
     <Group title="Партия по этикетке">
       <Row title={product?.name ?? 'Товар'} value={product ? formatQty(batch.leftQty, product.unit) : String(batch.leftQty)}
         subtitle={`${warehouse} · приход ${batch.receivedOn.slice(8, 10)}.${batch.receivedOn.slice(5, 7)} · ${age} дн.`}
-        tone={age >= WARN_DAYS ? 'warning' : 'normal'} last />
+        tone={age >= WARN_DAYS ? 'warning' : 'normal'} />
+      <Row title="Печатать этикетку ещё раз" last onPress={() => router.push({ pathname: '/label', params: { batch: batch.id } })} />
     </Group>
   );
 }

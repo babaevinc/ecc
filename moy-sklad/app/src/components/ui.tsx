@@ -89,7 +89,9 @@ export function Segmented({ options, value, onChange }: { options: Option[]; val
   );
 }
 
-export function Stepper({ value, onChange, unit }: { value: string; onChange: (v: string) => void; unit: Unit }) {
+type StepperProps = { value: string; onChange: (v: string) => void; unit: Unit; label?: string; placeholder?: string };
+
+export function Stepper({ value, onChange, unit, label = 'Количество', placeholder }: StepperProps) {
   const c = usePalette();
   const button = (label: string, delta: number, a11y: string) => (
     <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={() => onChange(stepQty(value, delta))}
@@ -101,8 +103,8 @@ export function Stepper({ value, onChange, unit }: { value: string; onChange: (v
     <View style={styles.stepper}>
       {button('−', -1, 'Уменьшить на 1')}
       <TextInput value={value} onChangeText={onChange} keyboardType={unit === 'kg' ? 'decimal-pad' : 'number-pad'}
-        placeholder={unit === 'kg' ? 'Килограммов' : 'Коробок'} placeholderTextColor={c.secondary}
-        accessibilityLabel="Количество" style={[styles.stepInput, type.bodyBold, { backgroundColor: c.card, color: c.text }]} />
+        placeholder={placeholder ?? (unit === 'kg' ? 'Килограммов' : 'Коробок')} placeholderTextColor={c.secondary}
+        accessibilityLabel={label} style={[styles.stepInput, type.bodyBold, { backgroundColor: c.card, color: c.text }]} />
       {button('+', 1, 'Увеличить на 1')}
     </View>
   );

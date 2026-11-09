@@ -4,6 +4,9 @@ import { ApiError, type Api, type AppNotification, type Scanner, type Session } 
 
 /** Fictional demo labels: a supplier EAN-13 linked to «Укроп» and the QR of the oldest batch. */
 export const DEMO_BARCODE = '4601234567893';
+// Demo batch ids are UUIDs like real ones, so their printed labels scan back.
+const demoBatchId = (n: number): string => `00000000-0000-4000-8000-${n.toString(16).padStart(12, '0')}`;
+
 export const DEMO_BATCH_ID = '3f2b8c1e-9a4d-4e7b-8c2a-1d5e6f7a8b9c';
 
 const daysAgo = (n: number): string => {
@@ -33,10 +36,10 @@ export function createDemoApi(): Api {
   ];
   const batches: StockBatch[] = [
     { id: DEMO_BATCH_ID, warehouseId: 'w1', productId: 'p1', receivedOn: daysAgo(9), supplier: 'Тепличное хозяйство', qty: 10, leftQty: 4 },
-    { id: 'b2', warehouseId: 'w1', productId: 'p1', receivedOn: daysAgo(1), supplier: 'Тепличное хозяйство', qty: 12, leftQty: 12 },
-    { id: 'b3', warehouseId: 'w1', productId: 'p3', receivedOn: daysAgo(2), supplier: null, qty: 40, leftQty: 35 },
-    { id: 'b4', warehouseId: 'w2', productId: 'p2', receivedOn: daysAgo(5), supplier: null, qty: 8, leftQty: 8 },
-    { id: 'b5', warehouseId: 'w3', productId: 'p4', receivedOn: daysAgo(0), supplier: null, qty: 2.5, leftQty: 2.5 },
+    { id: demoBatchId(2), warehouseId: 'w1', productId: 'p1', receivedOn: daysAgo(1), supplier: 'Тепличное хозяйство', qty: 12, leftQty: 12 },
+    { id: demoBatchId(3), warehouseId: 'w1', productId: 'p3', receivedOn: daysAgo(2), supplier: null, qty: 40, leftQty: 35 },
+    { id: demoBatchId(4), warehouseId: 'w2', productId: 'p2', receivedOn: daysAgo(5), supplier: null, qty: 8, leftQty: 8 },
+    { id: demoBatchId(5), warehouseId: 'w3', productId: 'p4', receivedOn: daysAgo(0), supplier: null, qty: 2.5, leftQty: 2.5 },
   ];
   const notifications: AppNotification[] = [
     { id: 'n1', kind: 'request_new', payload: { number: 12 }, createdAt: new Date().toISOString(), readAt: null },
@@ -102,7 +105,7 @@ export function createDemoApi(): Api {
       return batches.filter(b => b.leftQty > 0).map(b => ({ ...b }));
     },
     async receiveStock(input) {
-      const id = `b${batches.length + 1}`;
+      const id = demoBatchId(batches.length + 1);
       batches.push({ id, warehouseId: input.warehouseId, productId: input.productId, receivedOn: input.receivedOn,
         supplier: input.supplier || null, qty: round3(input.qty), leftQty: round3(input.qty) });
       return id;

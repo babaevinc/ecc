@@ -17,6 +17,7 @@ export default function ReceiveScreen() {
   const [supplier, setSupplier] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  const [receivedBatch, setReceivedBatch] = useState<string | null>(null);
 
   const c = usePalette();
   const params = useLocalSearchParams<{ product?: string }>();
@@ -45,9 +46,11 @@ export default function ReceiveScreen() {
     }
     setBusy(true);
     setResult(null);
+    setReceivedBatch(null);
     try {
-      await api.receiveStock({ warehouseId: wh, productId: product.id, qty: check.value, receivedOn: todayIso(), supplier: supplier.trim() });
+      const batchId = await api.receiveStock({ warehouseId: wh, productId: product.id, qty: check.value, receivedOn: todayIso(), supplier: supplier.trim() });
       setResult({ tone: 'success', text: `Принято: ${product.name}, ${formatQty(check.value, product.unit)}` });
+      setReceivedBatch(batchId);
       setQty('');
     } catch (e) {
       setResult({ tone: 'error', text: userMessage(e) });
@@ -74,6 +77,11 @@ export default function ReceiveScreen() {
       <Field value={supplier} onChangeText={setSupplier} placeholder="Поставщик (необязательно)" accessibilityLabel="Поставщик" />
       <PrimaryButton title="Принять" onPress={handleSubmit} busy={busy} />
       {result ? <Message tone={result.tone} text={result.text} /> : null}
+      {receivedBatch ? (
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/label', params: { batch: receivedBatch } })}>
+          <Text style={[typography.bodyBold, { color: c.accent }]}>Напечатать QR-этикетку на эту партию</Text>
+        </Pressable>
+      ) : null}
     </Screen>
   );
 }
