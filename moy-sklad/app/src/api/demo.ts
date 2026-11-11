@@ -202,6 +202,59 @@ export function createDemoApi(): Api {
       }
       return [...ops.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
+    async addProduct(product) {
+      if (products.some(p => p.name.toLowerCase() === product.name.toLowerCase())) throw new ApiError('Такое название уже есть');
+      const id = nextId('p-new-');
+      products.push({ id, name: product.name, unit: product.unit, sortOrder: products.length, archived: false });
+      return id;
+    },
+    async updateProduct(id, patch) {
+      const i = products.findIndex(p => p.id === id);
+      if (i < 0) throw new ApiError('Не найдено — возможно, запись удалили');
+      const used = batches.some(b => b.productId === id);
+      const inStock = batches.some(b => b.productId === id && b.leftQty > 0);
+      if ((patch.unit && patch.unit !== products[i].unit && used) || (patch.archived && !products[i].archived && inStock)) {
+        throw new ApiError('По этой зелени уже есть партии или остаток: единицу менять нельзя, а в архив — только после продажи или списания остатка');
+      }
+      if (patch.name && products.some(p => p.id !== id && p.name.toLowerCase() === patch.name!.toLowerCase())) throw new ApiError('Такое название уже есть');
+      products[i] = { ...products[i], ...patch };
+    },
+    async deleteProduct(id) {
+      if (batches.some(b => b.productId === id) || requests.some(r => r.lines.some(l => l.productId === id))) {
+        throw new ApiError('По этой зелени есть операции — удалить нельзя, отправьте её в архив');
+      }
+      const i = products.findIndex(p => p.id === id);
+      if (i >= 0) products.splice(i, 1);
+      for (const [code, pid] of barcodes) if (pid === id) barcodes.delete(code);
+    },
+    async addWarehouse(warehouse) {
+      if (warehouses.some(w => w.name.toLowerCase() === warehouse.name.toLowerCase())) throw new ApiError('Такое название уже есть');
+      const id = nextId('w-new-');
+      warehouses.push({ id, name: warehouse.name, kind: warehouse.kind, archived: false });
+      return id;
+    },
+    async updateWarehouse(id, patch) {
+      const i = warehouses.findIndex(w => w.id === id);
+      if (i < 0) throw new ApiError('Не найдено — возможно, запись удалили');
+      if (patch.archived && !warehouses[i].archived && batches.some(b => b.warehouseId === id && b.leftQty > 0)) {
+        throw new ApiError('На складе ещё есть товар: сначала продайте, переместите или спишите остаток');
+      }
+      if (patch.name && warehouses.some(w => w.id !== id && w.name.toLowerCase() === patch.name!.toLowerCase())) throw new ApiError('Такое название уже есть');
+      warehouses[i] = { ...warehouses[i], ...patch };
+    },
+    async deleteWarehouse(id) {
+      if (batches.some(b => b.warehouseId === id) || requests.some(r => r.warehouseId === id)) {
+        throw new ApiError('По этому складу есть операции — удалить нельзя, отправьте его в архив');
+      }
+      const i = warehouses.findIndex(w => w.id === id);
+      if (i >= 0) warehouses.splice(i, 1);
+    },
+    async listBarcodes() {
+      return [...barcodes].map(([code, productId]) => ({ code, productId })).sort((a, b) => a.code.localeCompare(b.code));
+    },
+    async unlinkBarcode(code) {
+      barcodes.delete(code);
+    },
     async cancelOp(key) {
       const first = movements.find(m => m.id === key);
       if (!first || first.voided) throw new ApiError('Операция уже отменена');

@@ -13,6 +13,18 @@ function check(error: DbError): void {
   if (error) throw new ApiError(messageForCode(error.code));
 }
 
+const NOT_OWNER = 'Менять каталог может только владелец компании';
+
+/** Catalog writes: duplicate name, a guard trigger (55000) and «still referenced» (23503) get their own words. */
+function catalogCheck(error: DbError, guarded?: string, referenced?: string): void {
+  if (!error) return;
+  if (error.code === '23505') throw new ApiError('Такое название уже есть');
+  if (error.code === '55000' && guarded) throw new ApiError(guarded);
+  if (error.code === '23503' && referenced) throw new ApiError(referenced);
+  if (error.code === '42501') throw new ApiError(NOT_OWNER);
+  check(error);
+}
+
 /** Lines in the shape the stock functions read (check_lines / create_request). */
 const toLines = (lines: CartLine[]) => lines.map(l => ({ product_id: l.productId, qty: l.qty, ...(l.price === null ? {} : { price: l.price }) }));
 
@@ -258,6 +270,61 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     async cancelOp(key) {
       const { error } = await sb.rpc('void_movement', { p_movement: key });
       check(error);
+    },
+
+    async addProduct(product) {
+      const company = await myCompanyId();
+      const { data: last, error: orderError } = await sb.from('products').select('sort_order').order('sort_order', { ascending: false, nullsFirst: false }).limit(1);
+      check(orderError);
+      const { data, error } = await sb.from('products')
+        .insert({ company_id: company, name: product.name, unit: product.unit, sort_order: (last?.[0]?.sort_order ?? -1) + 1 }).select('id').single();
+      catalogCheck(error);
+      if (!data) throw new ApiError(NOT_OWNER);
+      return data.id;
+    },
+
+    async updateProduct(id, patch) {
+      const { data, error } = await sb.from('products').update(patch).eq('id', id).select('id');
+      catalogCheck(error, 'По этой зелени уже есть партии или остаток: единицу менять нельзя, а в архив — только после продажи или списания остатка');
+      if (!data?.length) throw new ApiError(NOT_OWNER);
+    },
+
+    async deleteProduct(id) {
+      const { data, error } = await sb.from('products').delete().eq('id', id).select('id');
+      catalogCheck(error, undefined, 'По этой зелени есть операции — удалить нельзя, отправьте её в архив');
+      if (!data?.length) throw new ApiError(NOT_OWNER);
+    },
+
+    async addWarehouse(warehouse) {
+      const company = await myCompanyId();
+      const { data, error } = await sb.from('warehouses').insert({ company_id: company, name: warehouse.name, kind: warehouse.kind }).select('id').single();
+      catalogCheck(error);
+      if (!data) throw new ApiError(NOT_OWNER);
+      return data.id;
+    },
+
+    async updateWarehouse(id, patch) {
+      const { data, error } = await sb.from('warehouses').update(patch).eq('id', id).select('id');
+      catalogCheck(error, 'На складе ещё есть товар: сначала продайте, переместите или спишите остаток');
+      if (!data?.length) throw new ApiError(NOT_OWNER);
+    },
+
+    async deleteWarehouse(id) {
+      const { data, error } = await sb.from('warehouses').delete().eq('id', id).select('id');
+      catalogCheck(error, undefined, 'По этому складу есть операции — удалить нельзя, отправьте его в архив');
+      if (!data?.length) throw new ApiError(NOT_OWNER);
+    },
+
+    async listBarcodes() {
+      const { data, error } = await sb.from('product_barcodes').select('code, product_id').order('code');
+      check(error);
+      return (data ?? []).map(b => ({ code: b.code, productId: b.product_id }));
+    },
+
+    async unlinkBarcode(code) {
+      const { data, error } = await sb.from('product_barcodes').delete().eq('code', code).select('code');
+      check(error);
+      if (!data?.length) throw new ApiError('Отвязать штрихкод может только владелец компании');
     },
   };
 }

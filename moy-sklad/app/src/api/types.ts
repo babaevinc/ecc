@@ -1,6 +1,6 @@
 import type { CartLine, RequestStatus, Role, WasteReason } from '@/domain/ops';
 import type { ScannerKind } from '@/domain/scan';
-import type { Product, StockBatch, Warehouse } from '@/domain/stock';
+import type { Product, StockBatch, Unit, Warehouse } from '@/domain/stock';
 
 export type Scanner = {
   id: string;
@@ -61,6 +61,10 @@ export type DayOp = {
   mine: boolean;
 };
 
+export type ProductPatch = { name?: string; unit?: Unit; archived?: boolean };
+export type WarehousePatch = { name?: string; kind?: Warehouse['kind']; archived?: boolean };
+export type Barcode = { code: string; productId: string };
+
 /** Everything the screens need. Implemented by Supabase (production) and an in-memory demo. */
 export interface Api {
   readonly isDemo: boolean;
@@ -100,6 +104,17 @@ export interface Api {
   listTodayOps(): Promise<DayOp[]>;
   /** Cancels a sale or write-off; the stock comes back. */
   cancelOp(key: string): Promise<void>;
+  // Catalog (owner only; the server refuses everyone else and guards the books — see catalog_guards.sql)
+  addProduct(product: { name: string; unit: Unit }): Promise<string>;
+  updateProduct(id: string, patch: ProductPatch): Promise<void>;
+  /** Only a product that was never used; otherwise archive it. */
+  deleteProduct(id: string): Promise<void>;
+  addWarehouse(warehouse: { name: string; kind: Warehouse['kind'] }): Promise<string>;
+  updateWarehouse(id: string, patch: WarehousePatch): Promise<void>;
+  /** Only a warehouse that was never used; otherwise archive it. */
+  deleteWarehouse(id: string): Promise<void>;
+  listBarcodes(): Promise<Barcode[]>;
+  unlinkBarcode(code: string): Promise<void>;
 }
 
 /** An error whose message is already safe and understandable to show to the user. */
