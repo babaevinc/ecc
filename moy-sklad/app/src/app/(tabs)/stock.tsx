@@ -28,7 +28,7 @@ export default function StockScreen() {
                 <Row key={b.id} title={p.name} value={formatQty(b.leftQty, p.unit)} last={i === batches.length - 1}
                   subtitle={`партия ${shortDate(b.receivedOn)} · ${age} дн.${b.supplier ? ` · ${b.supplier}` : ''}`}
                   tone={age >= WARN_DAYS ? 'warning' : 'normal'}
-                  onPress={() => router.push({ pathname: '/label', params: { batch: b.id } })} />
+                  chevron onPress={() => router.push({ pathname: '/label', params: { batch: b.id } })} />
               );
             }) : <Row title="Пусто" last />}
           </Group>

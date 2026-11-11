@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import { RequestsPanel } from '@/components/ops/requests-panel';
 import { SalePanel } from '@/components/ops/sale-panel';
@@ -8,14 +9,19 @@ import { availableQty } from '@/domain/fifo';
 import { can } from '@/domain/ops';
 import { allowedWarehouses, useAccess } from '@/state/use-access';
 import { useStockData } from '@/state/use-stock-data';
+import { usePreferredWarehouse } from '@/state/use-warehouse';
 
 type Mode = 'requests' | 'sale' | 'spoil';
+const isMode = (v: unknown): v is Mode => v === 'requests' || v === 'sale' || v === 'spoil';
 
 export default function ShipScreen() {
   const { data, error, loading, reload } = useStockData();
   const { access, role, loaded } = useAccess();
   const [mode, setMode] = useState<Mode>('requests');
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = usePreferredWarehouse();
+  // Home shortcuts open this tab as /ship?mode=sale&t=<time>; `t` makes a repeated tap count again.
+  const params = useLocalSearchParams<{ mode?: string; t?: string }>();
+  useEffect(() => { if (isMode(params.mode)) setMode(params.mode); }, [params.mode, params.t]);
 
   const warehouses = data ? allowedWarehouses(data.warehouses, access) : [];
   const warehouseId = picked && warehouses.some(w => w.id === picked) ? picked : warehouses[0]?.id ?? null;
@@ -38,9 +44,10 @@ export default function ShipScreen() {
       ) : null}
       {data && warehouseId ? (() => {
         const panel = { data, warehouseId, warehouses, role, available, onChanged: reload };
-        if (active === 'sale') return <SalePanel {...panel} />;
-        if (active === 'spoil') return <SpoilPanel {...panel} />;
-        return <RequestsPanel {...panel} stockIn={stockIn} />;
+        // key: a cart belongs to one warehouse, so switching the warehouse starts a clean form.
+        if (active === 'sale') return <SalePanel key={warehouseId} {...panel} />;
+        if (active === 'spoil') return <SpoilPanel key={warehouseId} {...panel} />;
+        return <RequestsPanel key={warehouseId} {...panel} stockIn={stockIn} />;
       })() : null}
       {data && !warehouseId ? <Message tone="info" text="Нет доступных складов" /> : null}
     </Screen>

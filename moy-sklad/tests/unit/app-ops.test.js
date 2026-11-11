@@ -33,6 +33,13 @@ test('prices are optional, accept a comma and keep kopecks only', () => {
   assert.equal(ops.formatMoney(1234.5).replace(/\s/g, ' '), '1 234,5 ₽');
 });
 
+test('the suggested price is the newest priced line of that product', () => {
+  const newestFirst = [{ productId: 'p1', qty: 1, price: null }, { productId: 'p2', qty: 1, price: 90 }, { productId: 'p1', qty: 2, price: 350 }, { productId: 'p1', qty: 2, price: 300 }];
+  assert.equal(ops.lastPrice(newestFirst, 'p1'), 350);
+  assert.equal(ops.lastPrice(newestFirst, 'p3'), null);
+  assert.equal(ops.lastPrice([], 'p1'), null);
+});
+
 test('roles: managers create requests only, viewers nothing; managers cancel only their own', () => {
   assert.deepEqual(['owner', 'staff', 'manager', 'viewer'].map(r => [ops.can.request(r), ops.can.ship(r), ops.can.writeOff(r)]),
     [[true, true, true], [true, true, true], [true, false, false], [false, false, false]]);

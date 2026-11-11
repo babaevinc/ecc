@@ -55,6 +55,11 @@ export function overStock(lines: readonly CartLine[], available: (productId: str
   return null;
 }
 
+/** The price of the first priced line for a product; pass lines newest first to get the latest price. */
+export function lastPrice(lines: readonly CartLine[], productId: string): number | null {
+  return lines.find(l => l.productId === productId && l.price !== null)?.price ?? null;
+}
+
 export type PriceCheck = { ok: true; value: number | null } | { ok: false; error: string };
 
 /** Price per box or kg: optional, a comma is accepted, at most 2 decimals. */

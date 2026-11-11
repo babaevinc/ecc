@@ -6,9 +6,10 @@ import type { DayOp } from '@/api/types';
 import { CartList } from '@/components/ops/cart-list';
 import { LinePicker } from '@/components/ops/line-picker';
 import { TodayOps } from '@/components/ops/today-ops';
-import { Field, Message, PrimaryButton, SwitchRow } from '@/components/ui';
-import { addToCart, cartTotal, formatMoney, overStock, removeFromCart, type CartLine, type Role } from '@/domain/ops';
+import { Field, PrimaryButton, SwitchRow } from '@/components/ui';
+import { addToCart, cartTotal, formatMoney, lastPrice, overStock, removeFromCart, type CartLine, type Role } from '@/domain/ops';
 import { formatQty, type Warehouse } from '@/domain/stock';
+import { useToast } from '@/components/toast';
 import { useApi } from '@/state/session';
 import { userMessage, type StockData } from '@/state/use-stock-data';
 
@@ -21,37 +22,36 @@ export function SalePanel({ data, warehouseId, warehouses, role, available, onCh
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [ops, setOps] = useState<DayOp[]>([]);
-  const [notice, setNotice] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  const toast = useToast();
 
   const reload = useCallback(async () => {
     try {
       setOps((await api.listTodayOps()).filter(o => o.kind === 'sale'));
     } catch (e) {
-      setNotice({ tone: 'error', text: userMessage(e) });
+      toast('error', userMessage(e));
     }
-  }, [api]);
+  }, [api, toast]);
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   async function handleSell() {
-    if (!lines.length) return setNotice({ tone: 'error', text: 'Добавьте хотя бы одну позицию' });
+    if (!lines.length) return toast('error', 'Добавьте хотя бы одну позицию');
     const short = overStock(lines, available);
     if (short) {
       const p = data.products.find(x => x.id === short.productId);
-      return setNotice({ tone: 'error', text: `${p?.name ?? 'Товар'}: доступно только ${p ? formatQty(short.available, p.unit) : short.available}` });
+      return toast('error', `${p?.name ?? 'Товар'}: доступно только ${p ? formatQty(short.available, p.unit) : short.available}`);
     }
     setBusy(true);
-    setNotice(null);
     try {
       const total = cartTotal(lines);
       await api.recordSale({ warehouseId, lines, markdown, note });
       setLines([]);
       setMarkdown(false);
       setNote('');
-      setNotice({ tone: 'success', text: total ? `Продажа записана: ${formatMoney(total)}` : 'Продажа записана' });
+      toast('success', total ? `Продажа записана: ${formatMoney(total)}` : 'Продажа записана');
       await reload();
       onChanged();
     } catch (e) {
-      setNotice({ tone: 'error', text: userMessage(e) });
+      toast('error', userMessage(e));
     } finally {
       setBusy(false);
     }
@@ -60,17 +60,18 @@ export function SalePanel({ data, warehouseId, warehouses, role, available, onCh
   async function handleCancel(op: DayOp) {
     try {
       await api.cancelOp(op.key);
-      setNotice({ tone: 'success', text: 'Продажа отменена, товар вернулся на остаток' });
+      toast('success', 'Продажа отменена, товар вернулся на остаток');
       await reload();
       onChanged();
     } catch (e) {
-      setNotice({ tone: 'error', text: userMessage(e) });
+      toast('error', userMessage(e));
     }
   }
 
   return (
     <>
-      <LinePicker products={data.products.filter(p => available(p.id) > 0)} available={available} withPrice addTitle="Добавить в продажу" onAdd={l => setLines(cur => addToCart(cur, l))} />
+      <LinePicker products={data.products.filter(p => available(p.id) > 0)} available={available} withPrice addTitle="Добавить в продажу"
+        suggestPrice={pid => lastPrice([...lines].reverse().concat(ops.flatMap(o => o.items)), pid)} onAdd={l => setLines(cur => addToCart(cur, l))} />
       <CartList title="В продаже" lines={lines} products={data.products} onRemove={i => setLines(cur => removeFromCart(cur, i))} />
       {lines.length ? (
         <>
@@ -79,7 +80,6 @@ export function SalePanel({ data, warehouseId, warehouses, role, available, onCh
           <PrimaryButton title="Записать продажу" onPress={handleSell} busy={busy} />
         </>
       ) : null}
-      {notice ? <Message tone={notice.tone} text={notice.text} /> : null}
       <TodayOps title="Продано сегодня" ops={ops} products={data.products} warehouses={warehouses} empty="Сегодня продаж ещё не было"
         canCancel={op => op.mine || role === 'owner'} onCancel={handleCancel} />
     </>

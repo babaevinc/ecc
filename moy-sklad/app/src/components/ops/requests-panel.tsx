@@ -6,9 +6,10 @@ import { StyleSheet, View } from 'react-native';
 import type { StockRequest } from '@/api/types';
 import { CartList } from '@/components/ops/cart-list';
 import { LinePicker } from '@/components/ops/line-picker';
-import { Field, Group, Message, PrimaryButton, Row, SmallButton } from '@/components/ui';
-import { addToCart, can, cartTotal, formatMoney, overStock, removeFromCart, STATUS_LABEL, type CartLine, type Role } from '@/domain/ops';
+import { Field, Group, PrimaryButton, Row, SmallButton } from '@/components/ui';
+import { addToCart, can, cartTotal, formatMoney, lastPrice, overStock, removeFromCart, STATUS_LABEL, type CartLine, type Role } from '@/domain/ops';
 import { formatQty, type Warehouse } from '@/domain/stock';
+import { useToast } from '@/components/toast';
 import { useApi, useSession } from '@/state/session';
 import { userMessage, type StockData } from '@/state/use-stock-data';
 import { space } from '@/theme';
@@ -28,15 +29,15 @@ export function RequestsPanel({ data, warehouseId, warehouses, role, available, 
   const [client, setClient] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  const toast = useToast();
 
   const reload = useCallback(async () => {
     try {
       setList(await api.listRequests());
     } catch (e) {
-      setNotice({ tone: 'error', text: userMessage(e) });
+      toast('error', userMessage(e));
     }
-  }, [api]);
+  }, [api, toast]);
   useFocusEffect(useCallback(() => { reload(); }, [reload]));
 
   const name = (pid: string) => data.products.find(p => p.id === pid);
@@ -46,21 +47,20 @@ export function RequestsPanel({ data, warehouseId, warehouses, role, available, 
 
   async function run(key: string, action: () => Promise<string | void>, done: string) {
     setBusy(key);
-    setNotice(null);
     try {
       const text = await action();
-      setNotice({ tone: 'success', text: text || done });
+      toast('success', text || done);
       await reload();
       onChanged();
     } catch (e) {
-      setNotice({ tone: 'error', text: userMessage(e) });
+      toast('error', userMessage(e));
     } finally {
       setBusy(null);
     }
   }
 
   function handleCreate() {
-    if (!lines.length) return setNotice({ tone: 'error', text: 'Добавьте в заявку хотя бы одну позицию' });
+    if (!lines.length) return toast('error', 'Добавьте в заявку хотя бы одну позицию');
     run('create', async () => {
       const number = await api.createRequest({ warehouseId, client, lines });
       setLines([]);
@@ -73,7 +73,7 @@ export function RequestsPanel({ data, warehouseId, warehouses, role, available, 
     const short = overStock(r.lines, pid => stockIn(r.warehouseId, pid));
     if (short) {
       const p = name(short.productId);
-      return setNotice({ tone: 'error', text: `${p?.name ?? 'Товар'}: на складе ${p ? formatQty(short.available, p.unit) : short.available}, а в заявке ${p ? formatQty(short.need, p.unit) : short.need}` });
+      return toast('error', `${p?.name ?? 'Товар'}: на складе ${p ? formatQty(short.available, p.unit) : short.available}, а в заявке ${p ? formatQty(short.need, p.unit) : short.need}`);
     }
     run(r.id, async () => { await api.shipRequest(r.id); }, `Заявка №${r.number} отгружена, товар списан со склада`);
   }
@@ -110,7 +110,6 @@ export function RequestsPanel({ data, warehouseId, warehouses, role, available, 
 
   return (
     <>
-      {notice ? <Message tone={notice.tone} text={notice.text} /> : null}
       {open.length ? open.map(card) : <Group title="Открытые заявки"><Row title="Открытых заявок нет" last /></Group>}
       {can.request(role) ? (
         <>
@@ -118,7 +117,8 @@ export function RequestsPanel({ data, warehouseId, warehouses, role, available, 
           <Group title="Новая заявка">
             <Field value={client} onChangeText={setClient} placeholder="Клиент (необязательно)" accessibilityLabel="Клиент" maxLength={120} style={{ marginBottom: 0 }} />
           </Group>
-          <LinePicker products={data.products} available={available} withPrice addTitle="Добавить в заявку" onAdd={l => setLines(cur => addToCart(cur, l))} />
+          <LinePicker products={data.products} available={available} withPrice addTitle="Добавить в заявку"
+            suggestPrice={pid => lastPrice([...lines].reverse().concat(list.flatMap(r => r.lines)), pid)} onAdd={l => setLines(cur => addToCart(cur, l))} />
           <CartList title="В заявке" lines={lines} products={data.products} onRemove={i => setLines(cur => removeFromCart(cur, i))} />
           {lines.length ? <PrimaryButton title="Создать заявку" onPress={handleCreate} busy={busy === 'create'} /> : null}
         </>

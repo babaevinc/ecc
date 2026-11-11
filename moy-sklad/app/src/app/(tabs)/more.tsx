@@ -8,11 +8,11 @@ export default function MoreScreen() {
   return (
     <Screen title="Ещё">
       <Group title="Этикетки">
-        <Row title="Сканировать этикетку" subtitle="Камерой или подключённым сканером" onPress={() => router.push('/scan')} />
-        <Row title="Сканеры" subtitle="Добавить и проверить Bluetooth, USB и терминалы" onPress={() => router.push('/scanners')} last />
+        <Row title="Сканировать этикетку" subtitle="Камерой или подключённым сканером" onPress={() => router.push('/scan')} chevron />
+        <Row title="Сканеры" subtitle="Добавить и проверить Bluetooth, USB и терминалы" onPress={() => router.push('/scanners')} chevron last />
       </Group>
       <Group>
-        <Row title="Уведомления" subtitle="Заявки, отгрузки и старые партии" onPress={() => router.push('/notifications')} last />
+        <Row title="Уведомления" subtitle="Заявки, отгрузки и старые партии" onPress={() => router.push('/notifications')} chevron last />
       </Group>
       <Group>
         <Row title="Выйти" onPress={() => api.signOut()} last />

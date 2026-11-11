@@ -10,10 +10,12 @@ type Props = {
   available: (productId: string) => number;
   withPrice: boolean;
   addTitle: string;
+  /** The last price used for a product; filled in when the product is picked, still editable. */
+  suggestPrice?: (productId: string) => number | null;
   onAdd: (line: CartLine) => void;
 };
 
-export function LinePicker({ products, available, withPrice, addTitle, onAdd }: Props) {
+export function LinePicker({ products, available, withPrice, addTitle, suggestPrice, onAdd }: Props) {
   const [productId, setProductId] = useState<string | null>(null);
   const [qty, setQty] = useState('');
   const [price, setPrice] = useState('');
@@ -41,7 +43,12 @@ export function LinePicker({ products, available, withPrice, addTitle, onAdd }: 
           return (
             <Row key={p.id} title={p.name} selected={p.id === productId} last={i === products.length - 1}
               subtitle={left > 0 ? `есть ${formatQty(left, p.unit)}` : 'нет на складе'} tone={left > 0 ? 'normal' : 'warning'}
-              onPress={() => { setProductId(p.id); setError(null); }} />
+              onPress={() => {
+                setProductId(p.id);
+                setError(null);
+                const last = withPrice ? suggestPrice?.(p.id) ?? null : null;
+                setPrice(last === null ? '' : String(last).replace('.', ','));
+              }} />
           );
         })}
       </Group>

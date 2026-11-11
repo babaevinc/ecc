@@ -45,10 +45,12 @@ type RowProps = {
   tone?: 'normal' | 'warning';
   selected?: boolean;
   last?: boolean;
+  /** Shows › : the row opens another screen. */
+  chevron?: boolean;
   onPress?: () => void;
 };
 
-export function Row({ title, subtitle, value, tone = 'normal', selected, last, onPress }: RowProps) {
+export function Row({ title, subtitle, value, tone = 'normal', selected, last, chevron, onPress }: RowProps) {
   const c = usePalette();
   const body = (
     <View style={[styles.row, !last && { borderBottomColor: c.separator, borderBottomWidth: StyleSheet.hairlineWidth }]}>
@@ -58,6 +60,7 @@ export function Row({ title, subtitle, value, tone = 'normal', selected, last, o
       </View>
       {value ? <Text style={[type.bodyBold, { color: c.text }]}>{value}</Text> : null}
       {selected ? <Text style={[type.bodyBold, { color: c.accent }]}>✓</Text> : null}
+      {chevron ? <Text accessibilityElementsHidden importantForAccessibility="no" style={[styles.chevron, { color: c.secondary }]}>›</Text> : null}
     </View>
   );
   if (!onPress) return body;
@@ -178,6 +181,7 @@ const styles = StyleSheet.create({
   group: { borderRadius: 12, overflow: 'hidden' },
   row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: space.m, paddingVertical: 11, marginHorizontal: space.l },
   rowText: { flex: 1, minWidth: 0 },
+  chevron: { fontSize: 22, lineHeight: 24 },
   segmentScroll: { flexGrow: 0, marginBottom: space.l },
   segment: { flexDirection: 'row', padding: 2, borderRadius: 10, gap: 2 },
   segmentItem: { paddingHorizontal: space.m, paddingVertical: 7, borderRadius: 8 },

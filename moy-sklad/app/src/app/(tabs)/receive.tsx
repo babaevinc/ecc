@@ -7,11 +7,12 @@ import { type as typography, usePalette } from '@/theme';
 import { formatQty, parseQty, todayIso } from '@/domain/stock';
 import { useApi } from '@/state/session';
 import { userMessage, useStockData } from '@/state/use-stock-data';
+import { usePreferredWarehouse } from '@/state/use-warehouse';
 
 export default function ReceiveScreen() {
   const api = useApi();
   const { data, error: loadError } = useStockData();
-  const [warehouseId, setWarehouseId] = useState<string | null>(null);
+  const [warehouseId, setWarehouseId] = usePreferredWarehouse();
   const [productId, setProductId] = useState<string | null>(null);
   const [qty, setQty] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -23,7 +24,7 @@ export default function ReceiveScreen() {
   const params = useLocalSearchParams<{ product?: string }>();
   const warehouses = data?.warehouses ?? [];
   const products = data?.products ?? [];
-  const wh = warehouseId ?? (warehouses.length === 1 ? warehouses[0].id : null);
+  const wh = warehouseId && warehouses.some(w => w.id === warehouseId) ? warehouseId : warehouses.length === 1 ? warehouses[0].id : null;
   // A product picked by scanning arrives as ?product=<id>; only accept ids that exist.
   const scanned = typeof params.product === 'string' && products.some(p => p.id === params.product) ? params.product : null;
   const selectedId = productId ?? scanned;
