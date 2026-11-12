@@ -11,6 +11,7 @@ export default function MoreScreen() {
     <Screen title="Ещё">
       <Group title="Этикетки">
         <Row title="Сканировать этикетку" subtitle="Камерой или подключённым сканером" onPress={() => router.push('/scan')} chevron />
+        <Row title="Стикеры" subtitle="Напечатать QR-стикеры на товары и партии" onPress={() => router.push('/stickers')} chevron />
         <Row title="Сканеры" subtitle="Добавить и проверить Bluetooth, USB и терминалы" onPress={() => router.push('/scanners')} chevron last />
       </Group>
       {role === 'owner' ? (

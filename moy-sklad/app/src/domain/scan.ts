@@ -7,6 +7,7 @@ export type ScannerConfig = { prefix: string; suffix: string };
 
 export type ScanResult =
   | { kind: 'batch'; batchId: string }
+  | { kind: 'product'; productId: string }
   | { kind: 'barcode'; code: string; format: 'ean13' | 'ean8' | 'upc_a' | 'other' }
   | { kind: 'invalid'; reason: string };
 
@@ -17,11 +18,18 @@ export const SCANNER_KINDS: { value: ScannerKind; label: string; hint: string }[
 ];
 
 const BATCH_LABEL = /^MS:B:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+// Product stickers: the id is looked up afterwards, so any id-shaped text is accepted here.
+const PRODUCT_LABEL = /^MS:P:([0-9A-Za-z_-]{1,64})$/;
 const PRINTABLE = /^[0-9A-Za-z./:+-]{4,64}$/;
 
 /** Text printed on our own batch labels as a QR code. */
 export function batchLabel(batchId: string): string {
   return `MS:B:${batchId.toLowerCase()}`;
+}
+
+/** Text printed on our own product stickers as a QR code. */
+export function productLabel(productId: string): string {
+  return `MS:P:${productId}`;
 }
 
 /** Removes control characters (Enter, Tab, GS separators) and the scanner's configured prefix/suffix. */
@@ -47,6 +55,8 @@ export function parseScan(raw: string, config?: ScannerConfig): ScanResult {
   if (!code) return { kind: 'invalid', reason: 'Пустой код — отсканируйте ещё раз' };
   const batch = BATCH_LABEL.exec(code);
   if (batch) return { kind: 'batch', batchId: batch[1].toLowerCase() };
+  const product = PRODUCT_LABEL.exec(code);
+  if (product) return { kind: 'product', productId: product[1] };
   if (/^\d+$/.test(code) && [8, 12, 13].includes(code.length)) {
     if (!hasValidCheckDigit(code)) return { kind: 'invalid', reason: 'Код считан с ошибкой — отсканируйте ещё раз' };
     return { kind: 'barcode', code, format: code.length === 13 ? 'ean13' : code.length === 8 ? 'ean8' : 'upc_a' };

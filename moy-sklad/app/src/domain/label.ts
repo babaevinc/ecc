@@ -1,20 +1,30 @@
-// Printable batch labels: a QR code with MS:B:<batch id> plus the facts a storekeeper reads by eye.
+// Printable stickers: a QR code plus the facts a storekeeper reads by eye.
+// A batch label carries MS:B:<batch id>; a product sticker carries MS:P:<product id> (for boxes and shelves
+// that have no supplier barcode).
 // Pure functions (no React, no I/O) so they run under `node --experimental-strip-types` in tests.
 
 /** A QR matrix as produced by the `qrcode` package: `size`×`size` modules, row-major, 1 = dark. */
 export type QrMatrix = { size: number; data: ArrayLike<number> };
 
 export type LabelInfo = {
-  /** Text encoded in the QR code, e.g. `MS:B:<uuid>`. */
+  /** Text encoded in the QR code, e.g. `MS:B:<uuid>` or `MS:P:<uuid>`. */
   code: string;
   product: string;
-  /** Already formatted for people, e.g. «4 кор.». */
-  qty: string;
-  /** ISO date, YYYY-MM-DD. */
-  receivedOn: string;
-  warehouse: string;
+  /** Already formatted for people, e.g. «4 кор.»; null on a product sticker. */
+  qty: string | null;
+  /** ISO date, YYYY-MM-DD; null on a product sticker. */
+  receivedOn: string | null;
+  warehouse: string | null;
   supplier: string | null;
+  /** A free line, e.g. «Считаем в коробках» on a product sticker. */
+  note?: string | null;
 };
+
+/** One kind of sticker in a print job, repeated `copies` times. */
+export type LabelJob = { info: LabelInfo; qr: QrMatrix; copies: number };
+
+/** One print job stays a manageable document for phone printing. */
+export const MAX_TOTAL = 200;
 
 export const MAX_COPIES = 50;
 /** Common thermal label size (58×40 mm); ordinary printers print it on a page corner. */
@@ -56,14 +66,33 @@ export function qrSvg(matrix: QrMatrix): string {
     + `<rect width="${full}" height="${full}" fill="#fff"/><path fill="#000" d="${parts.join('')}"/></svg>`;
 }
 
-/** A complete HTML document with `copies` identical labels, one per printed page. */
-export function labelHtml(info: LabelInfo, qr: QrMatrix, copies: number): string {
-  const { width, height } = LABEL_SIZE_MM;
-  const meta = [`Приход ${ruDate(info.receivedOn)}`, info.warehouse, info.supplier].filter(Boolean).map(t => escapeHtml(String(t)));
-  const label = `<section class="label"><div class="qr">${qrSvg(qr)}</div><div class="text">`
-    + `<div class="product">${escapeHtml(info.product)}</div><div class="qty">${escapeHtml(info.qty)}</div>`
+function labelSection(info: LabelInfo, qr: QrMatrix): string {
+  const meta = [info.receivedOn ? `Приход ${ruDate(info.receivedOn)}` : null, info.warehouse, info.supplier, info.note ?? null]
+    .filter(Boolean).map(t => escapeHtml(String(t)));
+  return `<section class="label"><div class="qr">${qrSvg(qr)}</div><div class="text">`
+    + `<div class="product">${escapeHtml(info.product)}</div>${info.qty ? `<div class="qty">${escapeHtml(info.qty)}</div>` : ''}`
     + meta.map(m => `<div class="meta">${m}</div>`).join('')
     + `<div class="id">${escapeHtml(info.code.slice(5, 13))}</div></div></section>`;
+}
+
+/** Total stickers a job list prints: each job's copies clamped, the whole capped at MAX_TOTAL. */
+export function totalLabels(jobs: readonly { copies: number }[]): number {
+  return Math.min(MAX_TOTAL, jobs.reduce((sum, j) => sum + clampCopies(j.copies), 0));
+}
+
+/** A complete HTML document with `copies` identical labels, one per printed page. */
+export function labelHtml(info: LabelInfo, qr: QrMatrix, copies: number): string {
+  return labelsHtml([{ info, qr, copies }]);
+}
+
+/** A complete HTML document for several stickers in one print job, one sticker per printed page. */
+export function labelsHtml(jobs: readonly LabelJob[]): string {
+  const { width, height } = LABEL_SIZE_MM;
+  const sections: string[] = [];
+  for (const job of jobs) {
+    const section = labelSection(job.info, job.qr);
+    for (let i = 0; i < clampCopies(job.copies) && sections.length < MAX_TOTAL; i++) sections.push(section);
+  }
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Этикетка партии</title><style>`
     + `@page{size:${width}mm ${height}mm;margin:0}`
     + `*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Helvetica,Arial,sans-serif;color:#000}`
@@ -72,6 +101,7 @@ export function labelHtml(info: LabelInfo, qr: QrMatrix, copies: number): string
     + `.qr{width:24mm;height:24mm;flex:none}.qr svg{width:100%;height:100%;display:block}`
     + `.text{min-width:0;flex:1;line-height:1.15}.product{font-size:13pt;font-weight:700;overflow-wrap:anywhere}`
     + `.qty{font-size:12pt;font-weight:700;margin:0.5mm 0 1mm}.meta{font-size:7.5pt;overflow-wrap:anywhere}`
+    + `.product+.meta{margin-top:1mm}`
     + `.id{font-size:6.5pt;font-family:Menlo,monospace;margin-top:1mm;color:#333}`
-    + `</style></head><body>${Array.from({ length: clampCopies(copies) }, () => label).join('')}</body></html>`;
+    + `</style></head><body>${sections.join('')}</body></html>`;
 }

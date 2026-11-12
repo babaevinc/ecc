@@ -41,3 +41,11 @@ test('keyboard-mode scanners are told apart from people typing', () => {
   assert.equal(scan.looksLikeScanner([0, 180, 400, 610]), false);
   assert.equal(scan.looksLikeScanner([0, 5]), false);
 });
+
+test('our product sticker is recognised as a product, not as a supplier barcode', () => {
+  const id = '7c1d2e3f-0000-4000-8000-000000000001';
+  assert.deepEqual(scan.parseScan(scan.productLabel(id) + '\r'), { kind: 'product', productId: id });
+  assert.deepEqual(scan.parseScan('MS:P:p2'), { kind: 'product', productId: 'p2' });
+  assert.equal(scan.parseScan('MS:P:').kind, 'barcode', 'an empty id is just some printable code');
+  assert.equal(scan.parseScan('MS:P:<script>').kind, 'invalid');
+});

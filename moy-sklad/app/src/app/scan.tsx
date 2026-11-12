@@ -13,7 +13,7 @@ import { useApi } from '@/state/session';
 import { userMessage, useStockData } from '@/state/use-stock-data';
 
 type Resolved =
-  | { type: 'product'; code: string; productId: string }
+  | { type: 'product'; code: string | null; productId: string }
   | { type: 'unknown'; code: string }
   | { type: 'batch'; batch: StockBatch }
   | { type: 'error'; text: string };
@@ -59,6 +59,10 @@ function ScanScreen() {
       if (parsed.kind === 'batch') {
         const batch = await api.getBatch(parsed.batchId);
         setResult(batch ? { type: 'batch', batch } : { type: 'error', text: 'Партия не найдена или уже закончилась' });
+      } else if (parsed.kind === 'product') {
+        // Our own product sticker: the id must be a product this company still sells.
+        const known = products.some(p => p.id === parsed.productId);
+        setResult(known ? { type: 'product', code: null, productId: parsed.productId } : { type: 'error', text: 'Товар с этого стикера не найден — возможно, он в архиве' });
       } else {
         const productId = await api.findBarcode(parsed.code);
         setResult(productId ? { type: 'product', code: parsed.code, productId } : { type: 'unknown', code: parsed.code });
@@ -103,7 +107,7 @@ function ScanScreen() {
       {result?.type === 'product' ? (
         <>
           <Group title="Найден товар">
-            <Row title={productName(result.productId)} subtitle={`штрихкод ${result.code}`} last />
+            <Row title={productName(result.productId)} subtitle={result.code ? `штрихкод ${result.code}` : 'стикер товара'} last />
           </Group>
           <PrimaryButton title="Принять этот товар" onPress={() => router.push({ pathname: '/receive', params: { product: result.productId } })} />
         </>

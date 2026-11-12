@@ -30,11 +30,12 @@ function LabelScreen() {
   const api = useApi();
   const c = usePalette();
   const { data } = useStockData();
-  const params = useLocalSearchParams<{ batch?: string }>();
+  // ?copies=<n> comes from «Приход»: one sticker per received box.
+  const params = useLocalSearchParams<{ batch?: string; copies?: string }>();
   const batchId = typeof params.batch === 'string' ? params.batch : '';
   const [batch, setBatch] = useState<StockBatch | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [copies, setCopies] = useState('1');
+  const [copies, setCopies] = useState(() => String(clampCopies(Number(params.copies ?? 1))));
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
 

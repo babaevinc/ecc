@@ -60,3 +60,23 @@ test('the printed code is what the scanner reads back as this batch', () => {
   assert.equal(parsed.kind, 'batch');
   assert.equal(parsed.batchId, BATCH);
 });
+
+test('a product sticker has the name and a note, but no quantity or date', () => {
+  const sticker = { code: scan.productLabel('7c1d2e3f-0000-4000-8000-000000000001'), product: 'Кинза', qty: null, receivedOn: null, warehouse: null, supplier: null, note: 'Считаем в коробках' };
+  const html = label.labelHtml(sticker, matrix(), 2);
+  assert.equal((html.match(/<section class="label">/g) || []).length, 2);
+  assert.ok(html.includes('Кинза') && html.includes('Считаем в коробках'));
+  assert.ok(!html.includes('class="qty"') && !html.includes('Приход'));
+});
+
+test('one print job mixes several stickers, each with its own copies, and stops at the cap', () => {
+  const kinza = info({ product: 'Кинза' });
+  const html = label.labelsHtml([{ info: info(), qr: matrix(), copies: 2 }, { info: kinza, qr: matrix(), copies: 3 }]);
+  assert.equal((html.match(/<section class="label">/g) || []).length, 5);
+  assert.equal((html.match(/>Укроп</g) || []).length, 2);
+  assert.equal((html.match(/>Кинза</g) || []).length, 3);
+  assert.equal(label.totalLabels([{ copies: 2 }, { copies: 3 }, { copies: 0 }]), 6, 'zero copies still prints one');
+  const many = Array.from({ length: 6 }, () => ({ info: info(), qr: matrix(), copies: 50 }));
+  assert.equal(label.totalLabels(many), label.MAX_TOTAL);
+  assert.equal((label.labelsHtml(many).match(/<section class="label">/g) || []).length, label.MAX_TOTAL);
+});

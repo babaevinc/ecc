@@ -95,7 +95,7 @@ function ScannersScreen() {
     if (!tested) return;
     const code = cleanScan(raw, tested);
     const parsed = parseScan(raw, tested);
-    const what = parsed.kind === 'batch' ? 'этикетка партии' : parsed.kind === 'barcode' ? `штрихкод (${parsed.format === 'other' ? 'другой формат' : parsed.format.toUpperCase()})` : parsed.reason;
+    const what = parsed.kind === 'batch' ? 'этикетка партии' : parsed.kind === 'product' ? 'стикер товара' : parsed.kind === 'barcode' ? `штрихкод (${parsed.format === 'other' ? 'другой формат' : parsed.format.toUpperCase()})` : parsed.reason;
     setTestResult(`«${code}» — ${what}`);
     if (parsed.kind !== 'invalid') {
       await api.markScannerSeen(tested.id).catch(() => undefined);

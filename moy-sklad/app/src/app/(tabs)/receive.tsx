@@ -4,6 +4,7 @@ import { Pressable, Text } from 'react-native';
 
 import { Field, Group, Message, PrimaryButton, Row, Screen, Segmented, Stepper } from '@/components/ui';
 import { type as typography, usePalette } from '@/theme';
+import { MAX_COPIES } from '@/domain/label';
 import { formatQty, parseQty, todayIso } from '@/domain/stock';
 import { useApi } from '@/state/session';
 import { userMessage, useStockData } from '@/state/use-stock-data';
@@ -18,7 +19,7 @@ export default function ReceiveScreen() {
   const [supplier, setSupplier] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
-  const [receivedBatch, setReceivedBatch] = useState<string | null>(null);
+  const [receivedBatch, setReceivedBatch] = useState<{ id: string; boxes: number } | null>(null);
 
   const c = usePalette();
   const params = useLocalSearchParams<{ product?: string }>();
@@ -51,7 +52,8 @@ export default function ReceiveScreen() {
     try {
       const batchId = await api.receiveStock({ warehouseId: wh, productId: product.id, qty: check.value, receivedOn: todayIso(), supplier: supplier.trim() });
       setResult({ tone: 'success', text: `Принято: ${product.name}, ${formatQty(check.value, product.unit)}` });
-      setReceivedBatch(batchId);
+      // Boxes get a sticker each; kilograms are one lot, so one sticker.
+      setReceivedBatch({ id: batchId, boxes: product.unit === 'box' ? Math.min(check.value, MAX_COPIES) : 1 });
       setQty('');
     } catch (e) {
       setResult({ tone: 'error', text: userMessage(e) });
@@ -79,8 +81,8 @@ export default function ReceiveScreen() {
       <PrimaryButton title="Принять" onPress={handleSubmit} busy={busy} />
       {result ? <Message tone={result.tone} text={result.text} /> : null}
       {receivedBatch ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/label', params: { batch: receivedBatch } })}>
-          <Text style={[typography.bodyBold, { color: c.accent }]}>Напечатать QR-этикетку на эту партию</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/label', params: { batch: receivedBatch.id, copies: String(receivedBatch.boxes) } })}>
+          <Text style={[typography.bodyBold, { color: c.accent }]}>{receivedBatch.boxes > 1 ? `Напечатать стикеры на коробки: ${receivedBatch.boxes} шт.` : 'Напечатать QR-этикетку на эту партию'}</Text>
         </Pressable>
       ) : null}
     </Screen>
